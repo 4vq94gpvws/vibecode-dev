@@ -1,72 +1,66 @@
-import { useEffect } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { ActivityBar } from './components/ActivityBar'
-import { Sidebar } from './components/Sidebar'
-import { Editor } from './components/Editor'
-import { Terminal } from './components/Terminal'
-import { StatusBar } from './components/StatusBar'
-import { useEditorStore } from './store/editorStore'
-import { useWebContainer } from './hooks/useWebContainer'
+import React from 'react';
+import { EditorProvider } from './contexts/EditorContext';
+import { AgentProvider } from './contexts/AgentContext';
+import { WebContainerProvider } from './contexts/WebContainerContext';
+import { FileExplorer } from './components/FileExplorer';
+import { TabBar } from './components/TabBar';
+import { CodeEditor } from './components/CodeEditor';
+import { Terminal } from './components/Terminal';
+import { AgentPanel } from './components/AgentPanel';
+import { AgentStatusBar } from './components/AgentStatusBar';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
-function App() {
-  const { activeView, setActiveView } = useEditorStore()
-  const { isReady, error, boot } = useWebContainer()
-
-  useEffect(() => {
-    boot()
-  }, [boot])
+const EditorLayout: React.FC = () => {
+  useKeyboardShortcuts();
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-editor-bg">
+    <div className="h-screen flex flex-col bg-editor-bg text-editor-fg">
       {/* Top Bar */}
-      <div className="h-9 bg-editor-sidebar flex items-center px-4 border-b border-editor-border">
+      <div className="h-12 bg-editor-sidebar border-b border-editor-border flex items-center px-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500" />
-          <div className="w-3 h-3 rounded-full bg-green-500" />
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">V</span>
+          </div>
+          <span className="font-semibold text-lg">vibecode.dev</span>
         </div>
-        <div className="flex-1 text-center text-sm text-editor-muted">
-          vibecode.dev - {isReady ? 'WebContainer Ready' : error ? 'Error' : 'Initializing...'}
+        <div className="ml-auto flex items-center gap-4 text-sm text-gray-400">
+          <span>Fase 2: AI Sub-agents</span>
+          <span className="px-2 py-1 bg-blue-600 text-white rounded text-xs">Beta</span>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Activity Bar */}
-        <ActivityBar activeView={activeView} onViewChange={setActiveView} />
+        {/* File Explorer */}
+        <FileExplorer />
 
-        {/* Sidebar + Editor + Terminal */}
-        <PanelGroup direction="horizontal" className="flex-1">
-          {/* Sidebar */}
-          <Panel defaultSize={15} minSize={10} maxSize={30} className="bg-editor-sidebar">
-            <Sidebar activeView={activeView} />
-          </Panel>
-          
-          <PanelResizeHandle className="w-1 bg-editor-border hover:bg-editor-accent transition-colors" />
+        {/* Editor Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <TabBar />
+          <CodeEditor />
+          <Terminal />
+        </div>
 
-          {/* Editor + Terminal */}
-          <Panel defaultSize={85}>
-            <PanelGroup direction="vertical">
-              {/* Editor Area */}
-              <Panel defaultSize={70} minSize={20}>
-                <Editor />
-              </Panel>
-              
-              <PanelResizeHandle className="h-1 bg-editor-border hover:bg-editor-accent transition-colors" />
-
-              {/* Terminal */}
-              <Panel defaultSize={30} minSize={10} maxSize={50}>
-                <Terminal />
-              </Panel>
-            </PanelGroup>
-          </Panel>
-        </PanelGroup>
+        {/* AI Agent Panel */}
+        <AgentPanel />
       </div>
 
       {/* Status Bar */}
-      <StatusBar />
+      <AgentStatusBar />
     </div>
-  )
+  );
+};
+
+function App() {
+  return (
+    <WebContainerProvider>
+      <EditorProvider>
+        <AgentProvider>
+          <EditorLayout />
+        </AgentProvider>
+      </EditorProvider>
+    </WebContainerProvider>
+  );
 }
 
-export default App
+export default App;

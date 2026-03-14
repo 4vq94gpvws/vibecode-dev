@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useAgentContext } from '../contexts/AgentContext';
+import { useAgentContext, AIProvider } from '../contexts/AgentContext';
 import { AGENT_CONFIGS } from '../types/agents';
 import { useAgents } from '../hooks/useAgents';
 import { useEditor } from '../hooks/useEditor';
-import { Bot, X, Send, Sparkles, Bug, Wand2, FileText, TestTube, Check, Loader2 } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Bug, Wand2, FileText, TestTube, Check, Loader2, Cpu, Zap } from 'lucide-react';
 
 const AgentIcon: React.FC<{ type: string; size?: number }> = ({ type, size = 16 }) => {
   switch (type) {
@@ -16,8 +16,25 @@ const AgentIcon: React.FC<{ type: string; size?: number }> = ({ type, size = 16 
   }
 };
 
+const PROVIDER_CONFIG: Record<AIProvider, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode }> = {
+  claude: {
+    label: 'Claude',
+    color: '#d97706',
+    bgColor: 'rgba(217, 119, 6, 0.15)',
+    borderColor: 'rgba(217, 119, 6, 0.4)',
+    icon: <Cpu size={12} />,
+  },
+  kimi: {
+    label: 'Kimi',
+    color: '#7c3aed',
+    bgColor: 'rgba(124, 58, 237, 0.15)',
+    borderColor: 'rgba(124, 58, 237, 0.4)',
+    icon: <Zap size={12} />,
+  },
+};
+
 export const AgentPanel: React.FC = () => {
-  const { messages, activeAgents, isProcessing, clearMessages, toggleAgent } = useAgentContext();
+  const { messages, activeAgents, isProcessing, clearMessages, toggleAgent, provider, setProvider } = useAgentContext();
   const { requestCompletion, detectBugs, requestRefactor, generateDocs, generateTests } = useAgents();
   const { getAIContext } = useEditor();
   const [input, setInput] = useState('');
@@ -68,6 +85,8 @@ export const AgentPanel: React.FC = () => {
     }
   };
 
+  const activeProvider = PROVIDER_CONFIG[provider];
+
   if (!isOpen) {
     return (
       <button
@@ -95,6 +114,49 @@ export const AgentPanel: React.FC = () => {
           >
             <X size={14} />
           </button>
+        </div>
+      </div>
+
+      {/* Provider switcher */}
+      <div className="px-4 py-3 border-b border-editor-border">
+        <span className="text-xs text-gray-500 uppercase tracking-wider">AI Provider</span>
+        <div className="flex gap-2 mt-2">
+          {(Object.keys(PROVIDER_CONFIG) as AIProvider[]).map((p) => {
+            const cfg = PROVIDER_CONFIG[p];
+            const isActive = provider === p;
+            return (
+              <button
+                key={p}
+                onClick={() => setProvider(p)}
+                disabled={isProcessing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border"
+                style={{
+                  backgroundColor: isActive ? cfg.bgColor : 'transparent',
+                  color: isActive ? cfg.color : '#6b7280',
+                  borderColor: isActive ? cfg.borderColor : '#374151',
+                  boxShadow: isActive ? `0 0 8px ${cfg.color}40` : 'none',
+                }}
+                title={`Gebruik ${cfg.label}`}
+              >
+                {cfg.icon}
+                {cfg.label}
+                {isActive && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: cfg.color }}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        {/* Active provider indicator */}
+        <div
+          className="mt-2 px-2 py-1 rounded text-[10px] flex items-center gap-1.5"
+          style={{ backgroundColor: activeProvider.bgColor, color: activeProvider.color }}
+        >
+          {activeProvider.icon}
+          <span>Actief: <strong>{activeProvider.label}</strong> — berichten worden via {activeProvider.label} verwerkt</span>
         </div>
       </div>
 
@@ -168,6 +230,17 @@ export const AgentPanel: React.FC = () => {
                   <span className="text-xs font-medium" style={{ color: config?.color }}>
                     {config?.name}
                   </span>
+                  {/* Provider badge op elk bericht */}
+                  <span
+                    className="ml-auto text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                    style={{
+                      backgroundColor: PROVIDER_CONFIG[provider]?.bgColor,
+                      color: PROVIDER_CONFIG[provider]?.color,
+                    }}
+                  >
+                    {PROVIDER_CONFIG[provider]?.icon}
+                    {PROVIDER_CONFIG[provider]?.label}
+                  </span>
                   {message.status === 'streaming' && (
                     <Loader2 size={12} className="animate-spin text-gray-400" />
                   )}
@@ -197,16 +270,25 @@ export const AgentPanel: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend('completion')}
-            placeholder="Ask AI agents..."
+            placeholder={`Ask ${activeProvider.label}...`}
             className="flex-1 bg-editor-bg border border-editor-border rounded px-3 py-2 text-sm outline-none focus:border-blue-500"
           />
           <button
             onClick={() => handleSend('completion')}
             disabled={!input.trim() || isProcessing}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+            className="px-3 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: activeProvider.color,
+              color: 'white',
+            }}
           >
             <Send size={16} />
           </button>
+        </div>
+        <div className="mt-1.5 text-[10px] text-gray-500 text-center flex items-center justify-center gap-1">
+          {activeProvider.icon}
+          <span style={{ color: activeProvider.color }}>{activeProvider.label}</span>
+          <span>is actief — Enter om te sturen</span>
         </div>
       </div>
     </div>

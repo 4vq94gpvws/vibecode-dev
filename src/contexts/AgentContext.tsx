@@ -4,12 +4,16 @@ import { CodeSuggestion } from '../types/agents';
 import { AGENT_CONFIGS } from '../types/agents';
 import { v4 as uuidv4 } from 'uuid';
 
+export type AIProvider = 'claude' | 'kimi';
+
 interface AgentContextType {
   messages: AgentMessage[];
   activeAgents: AgentType[];
   isProcessing: boolean;
   currentStreamingMessage: string | null;
   suggestions: CodeSuggestion[];
+  provider: AIProvider;
+  setProvider: (p: AIProvider) => void;
   sendMessage: (type: AgentType, prompt: string, context: AIContext) => Promise<void>;
   clearMessages: () => void;
   toggleAgent: (type: AgentType) => void;
@@ -87,6 +91,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<CodeSuggestion[]>([]);
+  const [provider, setProvider] = useState<AIProvider>('claude');
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (type: AgentType, prompt: string, context: AIContext) => {
@@ -119,7 +124,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userPrompt, agentType: type, code, language }),
+        body: JSON.stringify({ prompt: userPrompt, agentType: type, code, language, provider }),
         signal: abortControllerRef.current.signal
       });
 
@@ -199,7 +204,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     endColumn: context.cursorPosition.column
                   },
                   content: accumulated.trim(),
-                  description: 'Claude AI completion'
+                  description: provider === 'kimi' ? 'Kimi AI completion' : 'Claude AI completion'
                 };
                 setSuggestions(prev => [...prev, newSuggestion]);
               }
@@ -231,7 +236,7 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentStreamingMessage(null);
       setIsProcessing(false);
     }
-  }, []);
+  }, [provider]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -261,6 +266,8 @@ export const AgentProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isProcessing,
       currentStreamingMessage,
       suggestions,
+      provider,
+      setProvider,
       sendMessage,
       clearMessages,
       toggleAgent,

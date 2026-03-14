@@ -1,198 +1,59 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Terminal as XTerm } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import { WebLinksAddon } from 'xterm-addon-web-links';
-import { useWebContainer } from '../contexts/WebContainerContext';
+import React, { useState, useRef, useCallback } from 'react';
 import { ChevronUp, ChevronDown, Trash2, Play } from 'lucide-react';
-import 'xterm/css/xterm.css';
+
+interface TerminalLine {
+  id: number;
+  type: 'prompt' | 'output' | 'error' | 'info';
+  text: string;
+}
 
 export const Terminal: React.FC = () => {
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const xtermRef = useRef<XTerm | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const { runCommand, isReady } = useWebContainer();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [commandHistory, setCommandHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [currentCommand, setCurrentCommand] = useState('');
+  const [lines, setLines] = useState<TerminalLine[]>([
+    { id: 0, type: 'info', text: 'Welcome to vibecode.dev terminal!' },
+    { id: 1, type: 'info', text: 'WebContainer integration available in local dev mode.' },
+  ]);
+  const [input, setInput] = useState('');
+  const [idCounter, setIdCounter] = useState(2);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!terminalRef.current || xtermRef.current) return;
-
-    const term = new XTerm({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        selectionBackground: '#264f78',
-        black: '#000000',
-        red: '#f48771',
-        green: '#4ec9b0',
-        yellow: '#dcdcaa',
-        blue: '#569cd6',
-        magenta: '#c586c0',
-        cyan: '#9cdcfe',
-        white: '#d4d4d4',
-        brightBlack: '#808080',
-        brightRed: '#f48771',
-        brightGreen: '#4ec9b0',
-        brightYellow: '#dcdcaa',
-        brightBlue: '#569cd6',
-        brightMagenta: '#c586c0',
-        brightCyan: '#9cdcfe',
-        brightWhite: '#ffffff'
-      },
-      convertEol: true
+  const addLine = useCallback((type: TerminalLine['type'], text: string) => {
+    setIdCounter(prev => {
+      const id = prev;
+      setLines(ls => [...ls, { id, type, text }]);
+      return prev + 1;
     });
-
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.loadAddon(new WebLinksAddon());
-
-    term.open(terminalRef.current);
-    fitAddon.fit();
-
-    xtermRef.current = term;
-    fitAddonRef.current = fitAddon;
-
-    term.writeln('\x1b[32mWelcome to vibecode.dev terminal!\x1b[0m');
-    term.writeln('\x1b[36mType commands to interact with WebContainer\x1b[0m');
-    term.writeln('');
-    writePrompt(term);
-
-    let input = '';
-    term.onData((data) => {
-      const code = data.charCodeAt(0);
-      
-      if (code === 13) {
-        term.writeln('');
-        if (input.trim()) {
-          executeCommand(input.trim());
-          setCommandHistory(prev => [...prev, input.trim()]);
-          setHistoryIndex(-1);
-        } else {
-          writePrompt(term);
-        }
-        input = '';
-        setCurrentCommand('');
-      } else if (code === 127) {
-        if (input.length > 0) {
-          input = input.slice(0, -1);
-          term.write('\b \b');
-        }
-      } else if (data === '\x1b[A') {
-        setCommandHistory(prev => {
-          const newIndex = Math.min(historyIndex + 1, prev.length - 1);
-          if (newIndex >= 0 && newIndex < prev.length) {
-            const cmd = prev[prev.length - 1 - newIndex];
-            clearCurrentLine(term, input);
-            input = cmd;
-            term.write(cmd);
-          }
-          setHistoryIndex(newIndex);
-          return prev;
-        });
-      } else if (data === '\x1b[B') {
-        setHistoryIndex(prev => {
-          const newIndex = Math.max(prev - 1, -1);
-          clearCurrentLine(term, input);
-          if (newIndex >= 0) {
-            const cmd = commandHistory[commandHistory.length - 1 - newIndex];
-            input = cmd;
-            term.write(cmd);
-          } else {
-            input = '';
-          }
-          return newIndex;
-        });
-      } else if (code >= 32 && code <= 126) {
-        input += data;
-        term.write(data);
-      }
-      setCurrentCommand(input);
-    });
-
-    const handleResize = () => {
-      fitAddon.fit();
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      term.dispose();
-      xtermRef.current = null;
-    };
   }, []);
 
-  const clearCurrentLine = (term: XTerm, currentInput: string) => {
-    for (let i = 0; i < currentInput.length; i++) {
-      term.write('\b \b');
-    }
-  };
-
-  const writePrompt = (term: XTerm) => {
-    term.write('\x1b[32mvibecode\x1b[0m\x1b[36m$\x1b[0m ');
-  };
-
-  const executeCommand = async (command: string) => {
-    const term = xtermRef.current;
-    if (!term) return;
-
-    if (!isReady) {
-      term.writeln('\x1b[31mWebContainer not ready yet. Please wait...\x1b[0m');
-      writePrompt(term);
+  const handleCommand = useCallback((cmd: string) => {
+    addLine('prompt', '$ ' + cmd);
+    const trimmed = cmd.trim();
+    if (!trimmed) return;
+    if (trimmed === 'clear') {
+      setLines([]);
       return;
     }
-
-    const parts = command.split(' ');
-    const cmd = parts[0];
-    const args = parts.slice(1);
-
-    try {
-      term.writeln('\x1b[90m$ ' + command + '\x1b[0m');
-      const { output, exitCode } = await runCommand(cmd, args);
-      
-      if (output) {
-        const lines = output.split(String.fromCharCode(10));
-        lines.forEach(line => {
-          if (line.includes('error') || line.includes('Error')) {
-            term.writeln('\x1b[31m' + line + '\x1b[0m');
-          } else if (line.includes('success') || line.includes('Success') || exitCode === 0) {
-            term.writeln('\x1b[32m' + line + '\x1b[0m');
-          } else {
-            term.writeln(line);
-          }
-        });
-      }
-      
-      if (exitCode !== 0) {
-        term.writeln('\x1b[31mProcess exited with code ' + exitCode + '\x1b[0m');
-      }
-    } catch (error) {
-      term.writeln('\x1b[31mError: ' + (error instanceof Error ? error.message : 'Unknown error') + '\x1b[0m');
+    if (trimmed === 'help') {
+      addLine('info', 'Available: clear, help, echo <text>');
+      return;
     }
-    
-    writePrompt(term);
-  };
+    if (trimmed.startsWith('echo ')) {
+      addLine('output', trimmed.slice(5));
+      return;
+    }
+    addLine('info', 'Terminal runs in browser mode. Full shell available in local dev.');
+  }, [addLine]);
 
-  const clearTerminal = () => {
-    if (xtermRef.current) {
-      xtermRef.current.clear();
-      xtermRef.current.writeln('\x1b[32mTerminal cleared\x1b[0m');
-      writePrompt(xtermRef.current);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCommand(input);
+      setInput('');
     }
   };
 
-  const runQuickCommand = (cmd: string) => {
-    if (xtermRef.current) {
-      xtermRef.current.writeln(cmd);
-      executeCommand(cmd);
-    }
-  };
+  const clearTerminal = () => setLines([]);
+
+  const runQuickCommand = (cmd: string) => handleCommand(cmd);
 
   return (
     <div className={'border-t border-editor-border bg-editor-bg transition-all duration-300 ' + (isExpanded ? 'h-64' : 'h-10')}>
@@ -205,37 +66,22 @@ export const Terminal: React.FC = () => {
             {isExpanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
             <span>Terminal</span>
           </button>
-          
           {isExpanded && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => runQuickCommand('npm install')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-editor-active hover:bg-editor-border rounded transition-colors"
-                title="npm install"
-              >
-                <Play size={10} />
-                install
-              </button>
-              <button
-                onClick={() => runQuickCommand('npm run dev')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-editor-active hover:bg-editor-border rounded transition-colors"
-                title="npm run dev"
-              >
-                <Play size={10} />
-                dev
-              </button>
-              <button
-                onClick={() => runQuickCommand('npm run build')}
-                className="flex items-center gap-1 px-2 py-1 text-xs bg-editor-active hover:bg-editor-border rounded transition-colors"
-                title="npm run build"
-              >
-                <Play size={10} />
-                build
-              </button>
+              {['npm install', 'npm run dev', 'npm run build'].map(cmd => (
+                <button
+                  key={cmd}
+                  onClick={() => runQuickCommand(cmd)}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-editor-active hover:bg-editor-border rounded transition-colors"
+                  title={cmd}
+                >
+                  <Play size={10} />
+                  {cmd.replace('npm ', '').replace('run ', '')}
+                </button>
+              ))}
             </div>
           )}
         </div>
-        
         {isExpanded && (
           <button
             onClick={clearTerminal}
@@ -246,10 +92,41 @@ export const Terminal: React.FC = () => {
           </button>
         )}
       </div>
-      
       {isExpanded && (
-        <div className="h-[calc(100%-40px)] p-2">
-          <div ref={terminalRef} className="h-full w-full" />
+        <div
+          className="h-[calc(100%-40px)] flex flex-col p-2 font-mono text-xs overflow-y-auto"
+          onClick={() => inputRef.current?.focus()}
+          style={{ background: '#1e1e1e', color: '#d4d4d4' }}
+        >
+          <div className="flex-1 overflow-y-auto space-y-0.5 mb-1">
+            {lines.map(line => (
+              <div
+                key={line.id}
+                style={{
+                  color: line.type === 'error' ? '#f48771'
+                    : line.type === 'prompt' ? '#4ec9b0'
+                    : line.type === 'info' ? '#569cd6'
+                    : '#d4d4d4'
+                }}
+              >
+                {line.text}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1">
+            <span style={{ color: '#4ec9b0' }}>vibecode</span>
+            <span style={{ color: '#9cdcfe' }}>$</span>
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-transparent outline-none text-xs"
+              style={{ color: '#d4d4d4', caretColor: '#d4d4d4' }}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
         </div>
       )}
     </div>

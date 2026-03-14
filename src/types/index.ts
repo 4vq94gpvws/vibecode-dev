@@ -1,202 +1,150 @@
-export interface FileNode {
+export interface Message {
   id: string;
-  name: string;
-  type: 'file' | 'directory';
-  content?: string;
-  language?: string;
-  isOpen?: boolean;
-  parentId?: string;
-  children?: FileNode[];
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  model?: string;
+  provider?: AIProvider;
 }
 
-export interface Tab {
+export interface Conversation {
   id: string;
-  fileId: string;
-  name: string;
-  isDirty: boolean;
-  cursorPosition?: { lineNumber: number; column: number };
+  title: string;
+  messages: Message[];
+  createdAt: number;
+  updatedAt: number;
+  model?: string;
+  provider?: AIProvider;
 }
 
-// AI Provider Types
-export type AIProvider = 'claude' | 'kimi' | 'openai' | 'ollama';
+export type AIProvider = 'claude' | 'kimi' | 'ollama' | 'custom' | 'openai';
 
-export interface ProviderConfig {
-  name: string;
-  description: string;
-  models: string[];
-  requiresApiKey: boolean;
-  baseUrl?: string;
-}
-
-export const PROVIDER_CONFIGS: Record<AIProvider, ProviderConfig> = {
-  claude: {
-    name: 'Claude (Anthropic)',
-    description: 'Anthropic\'s Claude AI models',
-    models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
-    requiresApiKey: true,
-    baseUrl: 'https://api.anthropic.com',
-  },
-  kimi: {
-    name: 'Kimi (Moonshot AI)',
-    description: 'Moonshot AI\'s Kimi models',
-    models: ['kimi-k1', 'kimi-k2', 'kimi-k1.5', 'kimi-moonshot-v1'],
-    requiresApiKey: true,
-    baseUrl: 'https://api.moonshot.cn',
-  },
-  openai: {
-    name: 'OpenAI',
-    description: 'OpenAI GPT models',
-    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-    requiresApiKey: true,
-    baseUrl: 'https://api.openai.com',
-  },
-  ollama: {
-    name: 'Ollama (Local)',
-    description: 'Run models locally with Ollama',
-    models: ['llama3.2', 'codellama', 'mistral', 'mixtral'],
-    requiresApiKey: false,
-    baseUrl: 'http://localhost:11434',
-  },
-};
-
-// Agent Types
-export type AgentType = 'completion' | 'bug-detection' | 'refactoring' | 'docs' | 'tests';
-
-export interface AgentConfig {
-  id: AgentType;
-  name: string;
-  description: string;
-  icon: string;
-  defaultModel: string;
-  defaultTemperature: number;
-  defaultMaxTokens: number;
-}
-
-export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
-  completion: {
-    id: 'completion',
-    name: 'Code Completion',
-    description: 'AI-powered code completion and suggestions',
-    icon: 'wand-2',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    defaultTemperature: 0.3,
-    defaultMaxTokens: 2048,
-  },
-  'bug-detection': {
-    id: 'bug-detection',
-    name: 'Bug Detection',
-    description: 'Detect bugs and potential issues in code',
-    icon: 'bug',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    defaultTemperature: 0.2,
-    defaultMaxTokens: 4096,
-  },
-  refactoring: {
-    id: 'refactoring',
-    name: 'Refactoring',
-    description: 'Suggest code improvements and refactoring',
-    icon: 'refresh-cw',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    defaultTemperature: 0.4,
-    defaultMaxTokens: 4096,
-  },
-  docs: {
-    id: 'docs',
-    name: 'Documentation',
-    description: 'Generate documentation and comments',
-    icon: 'file-text',
-    defaultModel: 'claude-3-haiku-20240307',
-    defaultTemperature: 0.5,
-    defaultMaxTokens: 2048,
-  },
-  tests: {
-    id: 'tests',
-    name: 'Test Generation',
-    description: 'Generate unit tests and test cases',
-    icon: 'check-circle',
-    defaultModel: 'claude-3-5-sonnet-20241022',
-    defaultTemperature: 0.3,
-    defaultMaxTokens: 4096,
-  },
-};
-
-// Settings Types
-export interface AISettings {
-  // Global settings
-  defaultProvider: AIProvider;
-  useCloudApi: boolean;
-  
-  // Provider API Keys (encrypted)
-  apiKeys: Partial<Record<AIProvider, string>>;
-  
-  // Ollama settings
-  ollamaUrl: string;
-  
-  // Per-agent settings
-  agentSettings: Record<AgentType, {
-    provider: AIProvider;
-    model: string;
-    temperature: number;
-    maxTokens: number;
-  }>;
+export interface AIConfig {
+  provider: AIProvider;
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
 }
 
 export interface EditorSettings {
-  theme: 'dark' | 'light' | 'high-contrast';
+  theme: 'dark' | 'light' | 'system';
   fontSize: number;
+  fontFamily: string;
+  lineHeight: number;
+  tabSize: number;
   wordWrap: boolean;
   minimap: boolean;
   lineNumbers: boolean;
-  tabSize: number;
-  insertSpaces: boolean;
+  autoSave: boolean;
 }
 
-export interface AppSettings {
-  ai: AISettings;
+export interface AgentSettings {
+  enabled: boolean;
+  autoRun: boolean;
+  confirmBeforeAction: boolean;
+  maxIterations: number;
+}
+
+export interface Settings {
+  ai: AIConfig;
   editor: EditorSettings;
+  agent: AgentSettings;
   version: string;
 }
 
-export interface AIMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
+export const DEFAULT_SETTINGS: Settings = {
+  version: '1.0.0',
+  ai: {
+    provider: 'claude',
+    apiKey: '',
+    baseUrl: '',
+    model: 'claude-3-sonnet-20240229',
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+  editor: {
+    theme: 'dark',
+    fontSize: 14,
+    fontFamily: 'JetBrains Mono, monospace',
+    lineHeight: 1.5,
+    tabSize: 2,
+    wordWrap: true,
+    minimap: true,
+    lineNumbers: true,
+    autoSave: true,
+  },
+  agent: {
+    enabled: true,
+    autoRun: false,
+    confirmBeforeAction: true,
+    maxIterations: 10,
+  },
+};
 
-export interface AIRequest {
-  messages: AIMessage[];
-  provider?: AIProvider;
-  model?: string;
-  temperature?: number;
-  max_tokens?: number;
-  stream?: boolean;
-  agentType?: AgentType;
-}
+export const AI_PROVIDERS = {
+  claude: {
+    name: 'Claude (Anthropic)',
+    models: [
+      { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Fast and cost-effective' },
+      { id: 'claude-3-sonnet-20240229', name: 'Claude 3.5 Sonnet', description: 'Balanced performance' },
+      { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most capable' },
+    ],
+    defaultBaseUrl: 'https://api.anthropic.com',
+    requiresApiKey: true,
+  },
+  kimi: {
+    name: 'Kimi (Moonshot)',
+    models: [
+      { id: 'moonshot-v1-8k', name: 'Kimi 8K', description: '8K context' },
+      { id: 'moonshot-v1-32k', name: 'Kimi 32K', description: '32K context' },
+      { id: 'moonshot-v1-128k', name: 'Kimi 128K', description: '128K context' },
+    ],
+    defaultBaseUrl: 'https://api.moonshot.cn',
+    requiresApiKey: true,
+  },
+  ollama: {
+    name: 'Ollama (Local)',
+    models: [
+      { id: 'llama2', name: 'Llama 2', description: 'Meta\'s Llama 2' },
+      { id: 'codellama', name: 'Code Llama', description: 'Code-specialized' },
+      { id: 'mistral', name: 'Mistral', description: 'Mistral AI' },
+      { id: 'mixtral', name: 'Mixtral', description: 'Mixture of Experts' },
+    ],
+    defaultBaseUrl: 'http://localhost:11434',
+    requiresApiKey: false,
+  },
+  custom: {
+    name: 'Custom',
+    models: [
+      { id: 'custom', name: 'Custom Model', description: 'Your custom model' },
+    ],
+    defaultBaseUrl: '',
+    requiresApiKey: true,
+  },
+  openai: {
+    name: 'OpenAI',
+    models: [
+      { id: 'gpt-4o', name: 'GPT-4o', description: 'Most capable multimodal' },
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini', description: 'Fast and affordable' },
+      { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', description: 'Legacy GPT-4' },
+    ],
+    defaultBaseUrl: 'https://api.openai.com',
+    requiresApiKey: true,
+  },
+} as const;
 
-export interface AIResponse {
-  content: string;
-  error?: string;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-}
+export const THEMES = [
+  { id: 'dark', name: 'Dark', icon: 'Moon' },
+  { id: 'light', name: 'Light', icon: 'Sun' },
+  { id: 'system', name: 'System', icon: 'Monitor' },
+] as const;
 
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  status: 'idle' | 'running' | 'completed' | 'error';
-  provider?: AIProvider;
-}
-
-export interface AgentTask {
-  id: string;
-  agentId: string;
-  prompt: string;
-  status: 'pending' | 'running' | 'completed' | 'error';
-  result?: string;
-  error?: string;
-  provider?: AIProvider;
-}
+export const FONT_FAMILIES = [
+  { id: 'JetBrains Mono, monospace', name: 'JetBrains Mono' },
+  { id: 'Fira Code, monospace', name: 'Fira Code' },
+  { id: 'Source Code Pro, monospace', name: 'Source Code Pro' },
+  { id: 'Consolas, monospace', name: 'Consolas' },
+  { id: 'monospace', name: 'System Monospace' },
+] as const;

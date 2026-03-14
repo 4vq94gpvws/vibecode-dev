@@ -1,97 +1,51 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { AppSettings, AISettings, EditorSettings, AIProvider, AgentType } from '../types';
-import { AGENT_CONFIGS, PROVIDER_CONFIGS } from '../types';
-import { encryptApiKey, decryptApiKey } from '../utils/encryption';
-
-const SETTINGS_STORAGE_KEY = 'vibecode-settings';
-const API_KEYS_STORAGE_KEY = 'vibecode-api-keys';
-
-const defaultAISettings: AISettings = {
-  defaultProvider: 'claude',
-  useCloudApi: true,
-  apiKeys: {},
-  ollamaUrl: 'http://localhost:11434',
-  agentSettings: {
-    completion: {
-      provider: 'claude',
-      model: PROVIDER_CONFIGS.claude.models[0],
-      temperature: 0.3,
-      maxTokens: 2048,
-    },
-    'bug-detection': {
-      provider: 'claude',
-      model: PROVIDER_CONFIGS.claude.models[0],
-      temperature: 0.2,
-      maxTokens: 4096,
-    },
-    refactoring: {
-      provider: 'claude',
-      model: PROVIDER_CONFIGS.claude.models[0],
-      temperature: 0.4,
-      maxTokens: 4096,
-    },
-    docs: {
-      provider: 'claude',
-      model: PROVIDER_CONFIGS.claude.models[2],
-      temperature: 0.5,
-      maxTokens: 2048,
-    },
-    tests: {
-      provider: 'claude',
-      model: PROVIDER_CONFIGS.claude.models[0],
-      temperature: 0.3,
-      maxTokens: 4096,
-    },
-  },
-};
-
-const defaultEditorSettings: EditorSettings = {
-  theme: 'dark',
-  fontSize: 14,
-  wordWrap: true,
-  minimap: true,
-  lineNumbers: true,
-  tabSize: 2,
-  insertSpaces: true,
-};
-
-const defaultSettings: AppSettings = {
-  ai: defaultAISettings,
-  editor: defaultEditorSettings,
-  version: '0.2.0',
-};
+import { Settings, DEFAULT_SETTINGS, AIProvider } from '../types';
 
 interface SettingsContextType {
-  settings: AppSettings;
-  updateAISettings: (settings: Partial<AISettings>) => void;
-  updateEditorSettings: (settings: Partial<EditorSettings>) => void;
-  updateAgentSettings: (agentType: AgentType, settings: Partial<AISettings['agentSettings'][AgentType]>) => void;
-  setApiKey: (provider: AIProvider, apiKey: string) => void;
-  getApiKey: (provider: AIProvider) => string | null;
-  hasApiKey: (provider: AIProvider) => boolean;
+  settings: Settings;
+  updateSettings: (updates: Partial<Settings>) => void;
+  updateAISettings: (updates: Partial<Settings['ai']>) => void;
+  updateEditorSettings: (updates: Partial<Settings['editor']>) => void;
+  updateAgentSettings: (updates: Partial<Settings['agent']>) => void;
   resetSettings: () => void;
-  exportSettings: () => string;
-  importSettings: (json: string) => boolean;
+  isSettingsOpen: boolean;
+  openSettings: () => void;
+  closeSettings: () => void;
+  activeSettingsTab: SettingsTab;
+  setActiveSettingsTab: (tab: SettingsTab) => void;
+  getCurrentProviderConfig: () => {
+    provider: AIProvider;
+    apiKey: string;
+    baseUrl: string;
+    model: string;
+  };
 }
+
+export type SettingsTab = 'ai' | 'editor' | 'agent' | 'general';
+
+const SETTINGS_KEY = 'vibecode-settings-v1';
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>('ai');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load settings from localStorage on mount
   useEffect(() => {
     try {
-      const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        // Merge with defaults to ensure new fields are present
+      const saved = localStorage.getItem(SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge with defaults to ensure all fields exist
         setSettings({
-          ...defaultSettings,
+          ...DEFAULT_SETTINGS,
           ...parsed,
-          ai: { ...defaultAISettings, ...parsed.ai },
-          editor: { ...defaultEditorSettings, ...parsed.editor },
+          ai: { ...DEFAULT_SETTINGS.ai, ...parsed.ai },
+          editor: { ...DEFAULT_SETTINGS.editor, ...parsed.editor },
+          agent: { ...DEFAULT_SETTINGS.agent, ...parsed.agent },
         });
       }
     } catch (error) {
@@ -104,133 +58,74 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       try {
-        const settingsWithoutApiKeys = {
-          ...settings,
-          ai: {
-            ...settings.ai,
-            apiKeys: {}, // Don't save API keys in settings
-          },
-        };
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settingsWithoutApiKeys));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       } catch (error) {
         console.error('Failed to save settings:', error);
       }
     }
   }, [settings, isLoaded]);
 
-  const updateAISettings = useCallback((newSettings: Partial<AISettings>) => {
-    setSettings((prev) => ({
+  const updateSettings = useCallback((updates: Partial<Settings>) => {
+    setSettings(prev => ({ ...prev, ...updates }));
+  }, []);
+
+  const updateAISettings = useCallback((updates: Partial<Settings['ai']>) => {
+    setSettings(prev => ({
       ...prev,
-      ai: { ...prev.ai, ...newSettings },
+      ai: { ...prev.ai, ...updates },
     }));
   }, []);
 
-  const updateEditorSettings = useCallback((newSettings: Partial<EditorSettings>) => {
-    setSettings((prev) => ({
+  const updateEditorSettings = useCallback((updates: Partial<Settings['editor']>) => {
+    setSettings(prev => ({
       ...prev,
-      editor: { ...prev.editor, ...newSettings },
+      editor: { ...prev.editor, ...updates },
     }));
   }, []);
 
-  const updateAgentSettings = useCallback((agentType: AgentType, newSettings: Partial<AISettings['agentSettings'][AgentType]>) => {
-    setSettings((prev) => ({
+  const updateAgentSettings = useCallback((updates: Partial<Settings['agent']>) => {
+    setSettings(prev => ({
       ...prev,
-      ai: {
-        ...prev.ai,
-        agentSettings: {
-          ...prev.ai.agentSettings,
-          [agentType]: { ...prev.ai.agentSettings[agentType], ...newSettings },
-        },
-      },
+      agent: { ...prev.agent, ...updates },
     }));
   }, []);
-
-  const setApiKey = useCallback((provider: AIProvider, apiKey: string) => {
-    try {
-      const encrypted = encryptApiKey(apiKey);
-      const existingKeys = localStorage.getItem(API_KEYS_STORAGE_KEY);
-      const keys = existingKeys ? JSON.parse(existingKeys) : {};
-      keys[provider] = encrypted;
-      localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(keys));
-      
-      setSettings((prev) => ({
-        ...prev,
-        ai: {
-          ...prev.ai,
-          apiKeys: { ...prev.ai.apiKeys, [provider]: apiKey },
-        },
-      }));
-    } catch (error) {
-      console.error('Failed to save API key:', error);
-    }
-  }, []);
-
-  const getApiKey = useCallback((provider: AIProvider): string | null => {
-    try {
-      // First check in-memory settings
-      if (settings.ai.apiKeys[provider]) {
-        return settings.ai.apiKeys[provider];
-      }
-      
-      // Then check localStorage
-      const existingKeys = localStorage.getItem(API_KEYS_STORAGE_KEY);
-      if (existingKeys) {
-        const keys = JSON.parse(existingKeys);
-        if (keys[provider]) {
-          return decryptApiKey(keys[provider]);
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to get API key:', error);
-      return null;
-    }
-  }, [settings.ai.apiKeys]);
-
-  const hasApiKey = useCallback((provider: AIProvider): boolean => {
-    if (provider === 'ollama') return true; // Ollama doesn't need API key
-    return getApiKey(provider) !== null;
-  }, [getApiKey]);
 
   const resetSettings = useCallback(() => {
-    setSettings(defaultSettings);
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
-    localStorage.removeItem(API_KEYS_STORAGE_KEY);
+    setSettings(DEFAULT_SETTINGS);
   }, []);
 
-  const exportSettings = useCallback((): string => {
-    return JSON.stringify(settings, null, 2);
-  }, [settings]);
-
-  const importSettings = useCallback((json: string): boolean => {
-    try {
-      const parsed = JSON.parse(json);
-      setSettings({
-        ...defaultSettings,
-        ...parsed,
-        ai: { ...defaultAISettings, ...parsed.ai },
-        editor: { ...defaultEditorSettings, ...parsed.editor },
-      });
-      return true;
-    } catch (error) {
-      console.error('Failed to import settings:', error);
-      return false;
-    }
+  const openSettings = useCallback(() => {
+    setIsSettingsOpen(true);
   }, []);
+
+  const closeSettings = useCallback(() => {
+    setIsSettingsOpen(false);
+  }, []);
+
+  const getCurrentProviderConfig = useCallback(() => {
+    return {
+      provider: settings.ai.provider,
+      apiKey: settings.ai.apiKey,
+      baseUrl: settings.ai.baseUrl,
+      model: settings.ai.model,
+    };
+  }, [settings.ai]);
 
   return (
     <SettingsContext.Provider
       value={{
         settings,
+        updateSettings,
         updateAISettings,
         updateEditorSettings,
         updateAgentSettings,
-        setApiKey,
-        getApiKey,
-        hasApiKey,
         resetSettings,
-        exportSettings,
-        importSettings,
+        isSettingsOpen,
+        openSettings,
+        closeSettings,
+        activeSettingsTab,
+        setActiveSettingsTab,
+        getCurrentProviderConfig,
       }}
     >
       {children}

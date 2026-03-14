@@ -1,83 +1,103 @@
-import { useState, useCallback } from 'react'
-
-interface AIState {
-  isLoading: boolean
-  error: string | null
-}
-
-interface CompletionRequest {
-  code: string
-  language: string
-  cursorPosition: number
-  context?: string
-}
-
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
+import { useState, useCallback } from 'react';
+import type { AIProvider, AIMessage, AIResponse } from '../types';
 
 export function useAI() {
-  const [state, setState] = useState<AIState>({
-    isLoading: false,
-    error: null,
-  })
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const complete = useCallback(async (request: CompletionRequest): Promise<string> => {
-    setState({ isLoading: true, error: null })
-    
+  const sendMessage = useCallback(async (
+    messages: AIMessage[],
+    provider: AIProvider = 'claude',
+    model?: string,
+    streamCallback?: (chunk: string) => void
+  ): Promise<AIResponse> => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      // For now, return a mock completion
-      // In production, this would call an API endpoint
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      const suggestions: Record<string, string[]> = {
-        javascript: ['console.log(', 'function ', 'const ', 'let ', 'import '],
-        typescript: ['interface ', 'type ', 'const ', 'let ', 'import '],
-        python: ['def ', 'class ', 'import ', 'print(', 'return '],
-        html: ['<div>', '<span>', '<p>', '<button>', '<input'],
-        css: ['display: ', 'color: ', 'margin: ', 'padding: ', 'flex'],
+      if (streamCallback) {
+        const response = await fetch('/api/ollama-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages,
+            provider,
+            model,
+            temperature: 0.7,
+            max_tokens: 4096,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to send message');
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('No response body');
+
+        let fullContent = '';
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split(String.fromCharCode(10));
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullContent += parsed.content;
+                  streamCallback(parsed.content);
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+
+        return { content: fullContent };
+      } else {
+        const response = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages,
+            provider,
+            model,
+            temperature: 0.7,
+            max_tokens: 4096,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to send message');
+        }
+
+        const data = await response.json();
+        return { content: data.content };
       }
-      
-      const langSuggestions = suggestions[request.language] || suggestions.javascript
-      const random = langSuggestions[Math.floor(Math.random() * langSuggestions.length)]
-      
-      setState({ isLoading: false, error: null })
-      return random
     } catch (err) {
-      setState({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
-      return ''
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return { content: '', error: errorMessage };
+    } finally {
+      setIsLoading(false);
     }
-  }, [])
-
-  const chat = useCallback(async (messages: ChatMessage[]): Promise<string> => {
-    setState({ isLoading: true, error: null })
-    
-    try {
-      // Mock chat response
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const responses = [
-        'I can help you with that! Let me analyze your code.',
-        'Here\'s a suggestion for improving your code structure.',
-        'You might want to consider using a different approach here.',
-        'This looks good! Here are some optimizations you could make.',
-        'I notice a potential issue. Let me explain...',
-      ]
-      
-      const response = responses[Math.floor(Math.random() * responses.length)]
-      
-      setState({ isLoading: false, error: null })
-      return response
-    } catch (err) {
-      setState({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' })
-      return ''
-    }
-  }, [])
+  }, []);
 
   return {
-    ...state,
-    complete,
-    chat,
-  }
+    sendMessage,
+    isLoading,
+    error,
+  };
 }

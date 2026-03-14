@@ -4,9 +4,9 @@ export interface FileNode {
   type: 'file' | 'directory';
   content?: string;
   language?: string;
-  children?: FileNode[];
   isOpen?: boolean;
-  parentId?: string | null;
+  parentId?: string;
+  children?: FileNode[];
 }
 
 export interface Tab {
@@ -17,28 +17,42 @@ export interface Tab {
   cursorPosition?: { lineNumber: number; column: number };
 }
 
-export interface TerminalMessage {
-  id: string;
-  type: 'input' | 'output' | 'error' | 'success';
+export type AIProvider = 'claude' | 'kimi';
+
+export interface AIMessage {
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: number;
 }
 
-export type AgentType = 'completion' | 'bug' | 'refactor' | 'docs' | 'test';
-
-export interface AgentMessage {
-  id: string;
-  agentType: AgentType;
-  content: string;
-  timestamp: number;
-  status: 'pending' | 'streaming' | 'complete' | 'error';
-  fileId?: string;
-  lineNumber?: number;
+export interface AIRequest {
+  messages: AIMessage[];
+  provider?: AIProvider;
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  stream?: boolean;
 }
 
-export interface AIContext {
-  currentFile?: FileNode;
-  cursorPosition?: { lineNumber: number; column: number };
-  projectFiles: FileNode[];
-  selectedCode?: string;
+export interface AIResponse {
+  content: string;
+  error?: string;
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  status: 'idle' | 'running' | 'completed' | 'error';
+  provider?: AIProvider;
+}
+
+export interface AgentTask {
+  id: string;
+  agentId: string;
+  prompt: string;
+  status: 'pending' | 'running' | 'completed' | 'error';
+  result?: string;
+  error?: string;
+  provider?: AIProvider;
 }

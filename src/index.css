@@ -2,29 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  body {
+    @apply bg-editor-bg text-gray-300;
+  }
 }
 
-html, body, #root {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-}
-
-/* Scrollbar styling */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -33,194 +20,9 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: #424242;
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #4f4f4f;
-}
-
-/* Monaco Editor customizations */
-.monaco-editor {
-  .margin {
-    background-color: #1e1e1e !important;
-  }
-  
-  .line-numbers {
-    color: #858585 !important;
-  }
-  
-  .current-line {
-    background-color: #2a2d2e !important;
-    border: none !important;
-  }
-}
-
-/* Terminal customizations */
-.xterm {
-  padding: 4px;
-  
-  .xterm-viewport {
-    background-color: #1e1e1e !important;
-  }
-  
-  .xterm-screen {
-    background-color: #1e1e1e !important;
-  }
-}
-
-/* Animation utilities */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Selection styling */
-::selection {
-  background-color: #264f78;
-  color: #ffffff;
-}
-
-/* Focus styles */
-*:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: -2px;
-}
-
-/* Button reset */
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-}
-
-/* Input reset */
-input {
-  font: inherit;
-  color: inherit;
-}
-
-/* Code block styling */
-pre {
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-}
-
-code {
-  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-}
-
-/* Drag and drop styling */
-.dragging {
-  opacity: 0.5;
-}
-
-.drag-over {
-  background-color: #2a2d2e;
-}
-
-/* AI suggestion highlights */
-.ai-suggestion-highlight {
-  background-color: rgba(59, 130, 246, 0.2);
-  border-left: 3px solid #3b82f6;
-}
-
-/* Loading spinner */
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-/* Tooltip styling */
-[data-tooltip] {
-  position: relative;
-}
-
-[data-tooltip]::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 8px;
-  background-color: #252526;
-  color: #d4d4d4;
-  font-size: 12px;
-  border-radius: 4px;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-  z-index: 1000;
-}
-
-[data-tooltip]:hover::after {
-  opacity: 1;
-}
-
-/* Tab animations */
-.tab-enter {
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Status indicator */
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.status-indicator.active {
-  background-color: #4ec9b0;
-  box-shadow: 0 0 8px #4ec9b0;
-}
-
-.status-indicator.inactive {
-  background-color: #858585;
-}
-
-.status-indicator.processing {
-  background-color: #569cd6;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Keyboard shortcut styling */
-kbd {
-  font-family: inherit;
-  font-size: 0.75em;
-  padding: 2px 6px;
-  background-color: #3c3c3c;
-  border: 1px solid #5a5a5a;
-  border-radius: 3px;
-  box-shadow: 0 1px 0 #5a5a5a;
 }

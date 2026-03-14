@@ -1,13 +1,16 @@
 import { useState, useCallback } from 'react';
-import type { AIProvider, AIMessage, AIResponse } from '../types';
+import { aiService, sendAIMessage } from '../services/aiService';
+import { useSettings } from '../contexts/SettingsContext';
+import type { AIProvider, AIMessage, AIResponse, AgentType } from '../types';
 
 export function useAI() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { settings, getApiKey } = useSettings();
 
   const sendMessage = useCallback(async (
     messages: AIMessage[],
-    provider: AIProvider = 'claude',
+    provider?: AIProvider,
     model?: string,
     streamCallback?: (chunk: string) => void
   ): Promise<AIResponse> => {
@@ -15,77 +18,36 @@ export function useAI() {
     setError(null);
 
     try {
-      if (streamCallback) {
-        const response = await fetch('/api/ollama-stream', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages,
-            provider,
-            model,
-            temperature: 0.7,
-            max_tokens: 4096,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to send message');
-        }
-
-        const reader = response.body?.getReader();
-        if (!reader) throw new Error('No response body');
-
-        let fullContent = '';
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split(String.fromCharCode(10));
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.content) {
-                  fullContent += parsed.content;
-                  streamCallback(parsed.content);
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
-            }
-          }
-        }
-
-        return { content: fullContent };
-      } else {
-        const response = await fetch('/api/ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages,
-            provider,
-            model,
-            temperature: 0.7,
-            max_tokens: 4096,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to send message');
-        }
-
-        const data = await response.json();
-        return { content: data.content };
+      // Determine provider - use provided or default from settings
+      const selectedProvider = provider || settings.ai.defaultProvider;
+      
+      // Get API key for the selected provider
+      const apiKey = getApiKey(selectedProvider);
+      
+      // Build API keys object
+      const apiKeys: Partial<Record<AIProvider, string>> = {};
+      if (apiKey) {
+        apiKeys[selectedProvider] = apiKey;
       }
+
+      const response = await sendAIMessage(
+        {
+          messages,
+          provider: selectedProvider,
+          model,
+          temperature: 0.7,
+          max_tokens: 4096,
+          stream: !!streamCallback,
+        },
+        apiKeys,
+        streamCallback
+      );
+
+      if (response.error) {
+        setError(response.error);
+      }
+
+      return response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -93,11 +55,71 @@ export function useAI() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [settings.ai.defaultProvider, getApiKey]);
+
+  const sendAgentMessage = useCallback(async (
+    agentType: AgentType,
+    messages: AIMessage[],
+    streamCallback?: (chunk: string) => void
+  ): Promise<AIResponse> => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const agentSettings = settings.ai.agentSettings[agentType];
+      const apiKey = getApiKey(agentSettings.provider);
+      
+      const apiKeys: Partial<Record<AIProvider, string>> = {};
+      if (apiKey) {
+        apiKeys[agentSettings.provider] = apiKey;
+      }
+
+      const response = await sendAIMessage(
+        {
+          messages,
+          provider: agentSettings.provider,
+          model: agentSettings.model,
+          temperature: agentSettings.temperature,
+          max_tokens: agentSettings.maxTokens,
+          stream: !!streamCallback,
+          agentType,
+        },
+        apiKeys,
+        streamCallback
+      );
+
+      if (response.error) {
+        setError(response.error);
+      }
+
+      return response;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMessage);
+      return { content: '', error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [settings.ai.agentSettings, getApiKey]);
+
+  const testProvider = useCallback(async (provider: AIProvider): Promise<{ success: boolean; message: string }> => {
+    const service = new AIService();
+    const apiKey = getApiKey(provider);
+    if (apiKey) {
+      service.setApiKey(provider, apiKey);
+    }
+    return service.testProvider(provider);
+  }, [getApiKey]);
 
   return {
     sendMessage,
+    sendAgentMessage,
+    testProvider,
     isLoading,
     error,
+    clearError: () => setError(null),
   };
 }
+
+// Import AIService for testProvider
+import { AIService } from '../services/aiService';

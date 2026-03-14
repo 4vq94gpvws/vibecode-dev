@@ -1,14 +1,2 @@
-export { AIPanel } from './AIPanel';
-export { ActivityBar } from './ActivityBar';
-export { AgentPanel } from './AgentPanel';
-export { AgentStatusBar } from './AgentStatusBar';
-export { CodeEditor } from './CodeEditor';
-export { Editor } from './Editor';
-export { FileExplorer } from './FileExplorer';
-export { GitPanel } from './GitPanel';
-export { SearchPanel } from './SearchPanel';
-export { SettingsPanel } from './SettingsPanel';
-export { Sidebar } from './Sidebar';
-export { StatusBar } from './StatusBar';
-export { TabBar } from './TabBar';
-export { Terminal } from './Terminal';
+export { SettingsPanel } from './SettingsPanel'
+export { SettingsButton } from './SettingsButton'

@@ -20,7 +20,7 @@ interface ToolStatus {
 }
 
 // ─── Config ───
-const API_URL = 'https://enricosynology.ddns.net:8787/v1/code/stream'
+const API_URL = 'https://enricosynology.ddns.net/v1/code/stream'
 
 const MODEL_CONFIG: Record<Model, { label: string; color: string; icon: typeof Cpu }> = {
   sonnet: { label: 'Claude Sonnet', color: '#d97706', icon: Cpu },

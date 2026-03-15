@@ -1,68 +1,78 @@
-import { Settings, Bot } from 'lucide-react'
-import { getSettings } from '../services/settingsService'
+import { useState } from 'react'
+import { 
+  MessageSquare, 
+  Search, 
+  GitBranch, 
+  Bug, 
+  Puzzle, 
+  Settings, 
+  User, 
+  Plus,
+  Clock,
+  MoreHorizontal
+} from 'lucide-react'
 
-interface ActivityBarProps {
-  onOpenSettings: () => void
+interface ActivityItem {
+  id: string
+  icon: React.ReactNode
+  label: string
+  active?: boolean
 }
 
-export function ActivityBar({ onOpenSettings }: ActivityBarProps) {
-  const settings = getSettings()
-  
-  const getProviderLabel = () => {
-    switch (settings.aiProvider.provider) {
-      case 'claude':
-        return 'Claude'
-      case 'kimi':
-        return 'Kimi'
-      case 'openai':
-        return 'OpenAI'
-      case 'custom':
-        return 'Custom'
-      default:
-        return 'AI'
-    }
-  }
-  
-  const getProviderColor = () => {
-    switch (settings.aiProvider.provider) {
-      case 'claude':
-        return 'text-orange-400'
-      case 'kimi':
-        return 'text-purple-400'
-      case 'openai':
-        return 'text-green-400'
-      case 'custom':
-        return 'text-blue-400'
-      default:
-        return 'text-gray-400'
-    }
-  }
+export function ActivityBar() {
+  const [activeItem, setActiveItem] = useState('chat')
+
+  const activityItems: ActivityItem[] = [
+    { id: 'chat', icon: <MessageSquare className="w-5 h-5" />, label: 'Chat', active: true },
+    { id: 'search', icon: <Search className="w-5 h-5" />, label: 'Search' },
+    { id: 'git', icon: <GitBranch className="w-5 h-5" />, label: 'Source Control' },
+    { id: 'debug', icon: <Bug className="w-5 h-5" />, label: 'Debug' },
+    { id: 'extensions', icon: <Puzzle className="w-5 h-5" />, label: 'Extensions' },
+  ]
+
+  const bottomItems: ActivityItem[] = [
+    { id: 'settings', icon: <Settings className="w-5 h-5" />, label: 'Settings' },
+    { id: 'account', icon: <User className="w-5 h-5" />, label: 'Account' },
+  ]
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Bot className="w-6 h-6 text-blue-400" />
-          <span className="font-semibold text-white">VibeCode</span>
-        </div>
-        
-        <div className="h-6 w-px bg-gray-600 mx-2" />
-        
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-700/50 ${getProviderColor()}`}>
-          <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
-          <span className="text-sm font-medium">{getProviderLabel()}</span>
-          <span className="text-xs text-gray-400">{settings.aiProvider.model}</span>
-        </div>
+    <div className="w-12 bg-[#252526] border-r border-[#3c3c3c] flex flex-col items-center py-2 shrink-0">
+      {/* Top Activity Icons */}
+      <div className="flex flex-col gap-1">
+        {activityItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveItem(item.id)}
+            className={`w-10 h-10 flex items-center justify-center rounded-md transition-colors relative ${
+              activeItem === item.id 
+                ? 'text-white bg-[#3c3c3c]' 
+                : 'text-gray-500 hover:text-gray-300 hover:bg-[#3c3c3c]/50'
+            }`}
+            title={item.label}
+          >
+            {item.icon}
+            {activeItem === item.id && (
+              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 rounded-r" />
+            )}
+          </button>
+        ))}
       </div>
-      
-      <button
-        onClick={onOpenSettings}
-        className="flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-        title="Settings"
-      >
-        <Settings className="w-5 h-5" />
-        <span className="text-sm">Settings</span>
-      </button>
-    </header>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Bottom Activity Icons */}
+      <div className="flex flex-col gap-1 pb-2">
+        {bottomItems.map((item) => (
+          <button
+            key={item.id}
+            className="w-10 h-10 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-300 hover:bg-[#3c3c3c]/50 transition-colors"
+            title={item.label}
+          >
+            {item.icon}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

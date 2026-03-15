@@ -1,87 +1,47 @@
-import { GitBranch, AlertCircle, Check, Loader2 } from 'lucide-react'
-import { useEditorStore } from '../store/editorStore'
-import { useWebContainer } from '../hooks/useWebContainer'
+import { 
+  GitBranch, 
+  XCircle, 
+  AlertTriangle, 
+  Check, 
+  Bell,
+  Zap
+} from 'lucide-react'
 
 export function StatusBar() {
-  const { activeFileId, files } = useEditorStore()
-  const { isReady, isLoading, error } = useWebContainer()
-
-  // Get active file info
-  const activeFile = (() => {
-    const findFile = (nodes: any[]): any => {
-      for (const node of nodes) {
-        if (node.id === activeFileId) return node
-        if (node.children) {
-          const found = findFile(node.children)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    return findFile(files)
-  })()
-
-  const getLanguageLabel = (lang?: string) => {
-    const labels: Record<string, string> = {
-      javascript: 'JavaScript',
-      typescript: 'TypeScript',
-      jsx: 'JSX',
-      tsx: 'TSX',
-      json: 'JSON',
-      markdown: 'Markdown',
-      css: 'CSS',
-      html: 'HTML',
-    }
-    return labels[lang || ''] || lang || 'Plain Text'
-  }
-
   return (
-    <div className="h-6 bg-editor-accent flex items-center px-2 text-white text-xs">
-      {/* Left Section */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
-          <GitBranch size={12} />
-          <span>main</span>
-        </div>
-        {activeFile?.isModified && (
-          <div className="flex items-center gap-1">
-            <AlertCircle size={12} />
-            <span>Modified</span>
+    <div className="h-6 bg-[#007acc] text-white flex items-center justify-between px-3 text-xs shrink-0">
+        {/* Left Section */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
+            <GitBranch className="w-3.5 h-3.5" />
+            <span>main*</span>
           </div>
-        )}
-      </div>
+          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
+            <XCircle className="w-3.5 h-3.5" />
+            <span>0</span>
+            <AlertTriangle className="w-3.5 h-3.5 ml-2" />
+            <span>0</span>
+          </div>
+        </div>
 
-      {/* Center Section */}
-      <div className="flex-1 text-center">
-        {isLoading ? (
-          <span className="flex items-center justify-center gap-1">
-            <Loader2 size={12} className="animate-spin" />
-            Initializing WebContainer...
-          </span>
-        ) : error ? (
-          <span className="flex items-center justify-center gap-1 text-red-200">
-            <AlertCircle size={12} />
-            {error}
-          </span>
-        ) : isReady ? (
-          <span className="flex items-center justify-center gap-1">
-            <Check size={12} />
-            WebContainer Ready
-          </span>
-        ) : null}
-      </div>
+        {/* Center Section */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
+            <Check className="w-3.5 h-3.5" />
+            <span>Prettier</span>
+          </div>
+        </div>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-4">
-        {activeFile && (
-          <>
-            <span>{getLanguageLabel(activeFile.language)}</span>
-            <span>UTF-8</span>
-            <span>LF</span>
-          </>
-        )}
-        <span>vibecode.dev</span>
+        {/* Right Section */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
+            <Zap className="w-3.5 h-3.5" />
+            <span>Cursor Tab</span>
+          </div>
+          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
+            <Bell className="w-3.5 h-3.5" />
+          </div>
+        </div>
       </div>
-    </div>
   )
 }

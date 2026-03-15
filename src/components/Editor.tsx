@@ -1,36 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import MonacoEditor from '@monaco-editor/react'
 import { X, Circle } from 'lucide-react'
-import { useEditorStore } from '../store/editorStore'
+import { useEditor } from '../hooks/useEditor'
 import { useAI } from '../hooks/useAI'
 
 export function Editor() {
-  const { tabs, activeFileId, closeTab, setActiveTab, files, updateFileContent } = useEditorStore()
+  const { tabs, activeTab, activeFile, closeTab, setActiveTab, updateFileContent, files } = useEditor()
   const { complete } = useAI()
   const [suggestion, setSuggestion] = useState('')
 
-  // Get active file content
-  const getActiveFile = useCallback(() => {
-    const findFile = (nodes: any[]): any => {
-      for (const node of nodes) {
-        if (node.id === activeFileId) return node
-        if (node.children) {
-          const found = findFile(node.children)
-          if (found) return found
-        }
-      }
-      return null
-    }
-    return findFile(files)
-  }, [activeFileId, files])
-
-  const activeFile = getActiveFile()
-
   const handleEditorChange = useCallback((value: string | undefined) => {
-    if (activeFileId && value !== undefined) {
-      updateFileContent(activeFileId, value)
+    if (activeTab?.fileId && value !== undefined) {
+      updateFileContent(activeTab.fileId, value)
     }
-  }, [activeFileId, updateFileContent])
+  }, [activeTab, updateFileContent])
 
   // AI completion on Ctrl+Space
   const handleEditorMount = useCallback((editor: any, monaco: any) => {
@@ -71,43 +54,42 @@ export function Editor() {
       {/* Tabs */}
       <div className="flex bg-editor-sidebar border-b border-editor-border overflow-x-auto">
         {tabs.map((tab) => {
-          const file = (() => {
-            const findFile = (nodes: any[]): any => {
-              for (const node of nodes) {
-                if (node.id === tab.fileId) return node
-                if (node.children) {
-                  const found = findFile(node.children)
-                  if (found) return found
-                }
+          // Find the file for this tab
+          const findFile = (nodes: any[]): any => {
+            for (const node of nodes) {
+              if (node.id === tab.fileId) return node
+              if (node.children) {
+                const found = findFile(node.children)
+                if (found) return found
               }
-              return null
             }
-            return findFile(files)
-          })()
+            return null
+          }
+          const file = findFile(files)
           
           return (
             <div
               key={tab.id}
-              onClick={() => setActiveTab(tab.fileId)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer group border-r border-editor-border ${
-                tab.isActive 
-                  ? 'bg-editor-bg text-white' 
+                tab.id === activeTab?.id
+                  ? 'bg-editor-bg text-white'
                   : 'bg-editor-sidebar text-editor-muted hover:bg-editor-hover'
               }`}
             >
               <span className="flex-1 truncate text-sm">
-                {file?.name || 'Untitled'}
+                {file?.name || tab.name || 'Untitled'}
               </span>
-              {file?.isModified && (
+              {tab.isDirty && (
                 <Circle size={8} className="fill-current text-editor-accent" />
               )}
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  closeTab(tab.fileId)
+                  closeTab(tab.id)
                 }}
                 className={`opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-editor-hover ${
-                  tab.isActive ? 'text-editor-muted hover:text-white' : 'text-editor-muted'
+                  tab.id === activeTab?.id ? 'text-editor-muted hover:text-white' : 'text-editor-muted'
                 }`}
               >
                 <X size={14} />

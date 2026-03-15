@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // Base path moet overeenkomen met nginx proxy prefix /dev-preview/
-  base: '/dev-preview/',
+  base: '/',
   // React Native Web — alias zodat `import { View } from 'react-native'` werkt in Vite
   resolve: {
     alias: {

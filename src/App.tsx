@@ -168,21 +168,8 @@ function App() {
       <div className="h-screen w-screen bg-[#1e1e1e] text-gray-300 flex flex-col overflow-hidden font-sans">
         {/* Topbar - macOS style */}
         <div className="h-10 bg-[#252526] border-b border-[#3c3c3c] flex items-center justify-between px-4 shrink-0">
-          {/* Left: Window controls + Search */}
+          {/* Left: Search */}
           <div className="flex items-center gap-4">
-            {/* macOS Window Controls */}
-            <div className="flex items-center gap-2">
-              <button onClick={handleClose} className="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 flex items-center justify-center">
-                <X className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-              </button>
-              <button onClick={handleMinimize} className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 flex items-center justify-center">
-                <Minus className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-              </button>
-              <button onClick={handleMaximize} className="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 flex items-center justify-center">
-                <Square className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-              </button>
-            </div>
-            
             {/* Search Bar */}
             <div className="flex items-center gap-2 bg-[#3c3c3c] rounded-md px-3 py-1.5 min-w-[300px]">
               <Search className="w-4 h-4 text-gray-500" />
@@ -191,52 +178,39 @@ function App() {
           </div>
 
           {/* Center: Title */}
-          <div className="absolute left-1/2 transform -translate-x-1/2">
-            <span className="text-sm font-medium text-gray-400">
-              {currentProject.name}
-            </span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-300">{currentProject.name}</span>
+            <span className="text-xs text-gray-500 px-2 py-0.5 bg-[#3c3c3c] rounded">{currentProject.type}</span>
           </div>
 
-          {/* Right: Upgrade button */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleUpgrade}
-              className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium rounded-full hover:opacity-90 transition-opacity">
-              Upgrade to Pro
-            </button>
+          {/* Right: Actions */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 hover:bg-[#3c3c3c] rounded-md transition-colors">
+              className="p-2 hover:bg-[#3c3c3c] rounded-md transition-colors"
+              title="Settings"
+            >
               <Command className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Main IDE Layout */}
+        {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Left Sidebar: File Explorer (250px) */}
-          <div className="w-[250px] shrink-0">
-            <FileExplorer />
-          </div>
+          {/* Sidebar */}
+          <FileExplorer />
 
-          {/* Main Content Area */}
+          {/* Editor Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Tab Bar */}
             <TabBar />
-            
-            {/* Editor Area */}
-            <div className="flex-1 flex flex-col min-h-0">
-              <div className="flex-1 min-h-0">
-                <CodeEditor />
-              </div>
-              
-              {/* Terminal (200px height, toggleable) */}
-              {isTerminalVisible && (
-                <div className="h-[200px] shrink-0 border-t border-[#3c3c3c]">
-                  <Terminal />
-                </div>
-              )}
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor />
             </div>
+            {isTerminalVisible && (
+              <div className="h-48 border-t border-[#3c3c3c]">
+                <Terminal />
+              </div>
+            )}
           </div>
         </div>
 
@@ -251,16 +225,14 @@ function App() {
         />
 
         {/* Toasts */}
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-          {toasts.map((toast) => (
-            <Toast
-              key={toast.id}
-              message={toast.message}
-              type={toast.type}
-              onClose={() => removeToast(toast.id)}
-            />
-          ))}
-        </div>
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
       </div>
     )
   }
@@ -268,35 +240,10 @@ function App() {
   // Welcome Screen - shown when no project is open
   return (
     <div className="h-screen w-screen bg-[#1e1e1e] text-gray-300 flex flex-col overflow-hidden font-sans">
-      {/* Hidden file input for folder selection */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        // @ts-ignore
-        webkitdirectory=""
-        directory=""
-        multiple
-        className="hidden"
-        onChange={handleFileSelect}
-      />
-
-      {/* Topbar - macOS style */}
+      {/* Topbar */}
       <div className="h-10 bg-[#252526] border-b border-[#3c3c3c] flex items-center justify-between px-4 shrink-0">
-        {/* Left: Window controls + Search */}
+        {/* Left: Search */}
         <div className="flex items-center gap-4">
-          {/* macOS Window Controls */}
-          <div className="flex items-center gap-2">
-            <button onClick={handleClose} className="w-3 h-3 rounded-full bg-[#ff5f56] hover:bg-[#ff5f56]/80 flex items-center justify-center">
-              <X className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-            </button>
-            <button onClick={handleMinimize} className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80 flex items-center justify-center">
-              <Minus className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-            </button>
-            <button onClick={handleMaximize} className="w-3 h-3 rounded-full bg-[#27c93f] hover:bg-[#27c93f]/80 flex items-center justify-center">
-              <Square className="w-2 h-2 text-[#1e1e1e] opacity-0 hover:opacity-100" />
-            </button>
-          </div>
-          
           {/* Search Bar */}
           <div className="flex items-center gap-2 bg-[#3c3c3c] rounded-md px-3 py-1.5 min-w-[300px]">
             <Search className="w-4 h-4 text-gray-500" />
@@ -305,77 +252,69 @@ function App() {
         </div>
 
         {/* Center: Title */}
-        <div className="absolute left-1/2 transform -translate-x-1/2">
-          <span className="text-sm font-medium text-gray-400">
-            vibecode-dev
-          </span>
+        <div className="flex items-center">
+          <span className="text-sm font-medium text-gray-300">vibecode.dev</span>
         </div>
 
-        {/* Right: Upgrade button */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleUpgrade}
-            className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium rounded-full hover:opacity-90 transition-opacity">
-            Upgrade to Pro
-          </button>
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-2 hover:bg-[#3c3c3c] rounded-md transition-colors">
+            className="p-2 hover:bg-[#3c3c3c] rounded-md transition-colors"
+            title="Settings"
+          >
             <Command className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Welcome Screen Content */}
+      {/* Welcome Content */}
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center max-w-2xl px-8">
-          {/* Logo / Icon */}
+          {/* Logo */}
           <div className="mb-8">
-            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl">
-              <Command className="w-12 h-12 text-white" />
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl">
+              <span className="text-3xl font-bold text-white">V</span>
             </div>
           </div>
 
           {/* Title */}
           <h1 className="text-4xl font-bold text-white mb-4">
-            Welcome to vibecode.dev
+            Welcome to <span className="text-blue-400">vibecode.dev</span>
           </h1>
-          <p className="text-lg text-gray-400 mb-12">
-            AI-powered code editor with intelligent agents
+          <p className="text-lg text-gray-400 mb-8">
+            The AI-powered code editor that helps you build faster
           </p>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <button
               onClick={handleOpenProject}
               disabled={isLoading}
-              className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl">
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Folder className="w-5 h-5" />
-              )}
-              {isLoading ? 'Opening...' : 'Open project'}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Folder className="w-5 h-5" />}
+              Open Project
             </button>
-            
             <button
               onClick={handleCloneRepo}
               disabled={isLoading}
-              className="flex items-center gap-3 px-8 py-4 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-              <GitBranch className="w-5 h-5" />
-              Clone repository
+              className="flex items-center gap-2 px-6 py-3 bg-[#3c3c3c] hover:bg-[#4c4c4c] disabled:bg-[#2a2a2a] disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GitBranch className="w-5 h-5" />}
+              Clone Repository
             </button>
-            
             <button
               onClick={handleConnectSSH}
               disabled={isLoading}
-              className="flex items-center gap-3 px-8 py-4 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-              <TerminalIcon className="w-5 h-5" />
+              className="flex items-center gap-2 px-6 py-3 bg-[#3c3c3c] hover:bg-[#4c4c4c] disabled:bg-[#2a2a2a] disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <TerminalIcon className="w-5 h-5" />}
               Connect via SSH
             </button>
           </div>
 
-          {/* Recent Projects (placeholder) */}
+          {/* Recent Projects */}
           <div className="mt-16">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
               Recent Projects
@@ -407,40 +346,21 @@ function App() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-white">Unlimited AI Agents</h3>
-                  <p className="text-sm text-gray-400">Run multiple AI agents simultaneously</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-white">Priority Support</h3>
-                  <p className="text-sm text-gray-400">Get help within 24 hours</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4 text-green-400" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-white">Advanced Features</h3>
-                  <p className="text-sm text-gray-400">Access to beta features and custom models</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <button onClick={() => setShowUpgradeModal(false)} className="flex-1 py-2 text-gray-400 hover:text-white transition-colors">
-                Maybe later
+            <p className="text-gray-400 mb-6">
+              Unlock unlimited AI completions, advanced features, and priority support.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 px-4 py-2 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white rounded-lg transition-colors">
+                Maybe Later
               </button>
-              <button onClick={() => { setShowUpgradeModal(false); addToast('Upgrade feature coming soon!', 'info') }} className="flex-1 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-medium hover:opacity-90 transition-opacity">
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false)
+                  addToast('Thank you for your interest in Pro!', 'success')
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                 Upgrade Now
               </button>
             </div>
@@ -448,7 +368,7 @@ function App() {
         </div>
       )}
 
-      {/* Clone Repo Modal */}
+      {/* Clone Modal */}
       {showCloneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md bg-[#252526] rounded-xl border border-[#3c3c3c] shadow-2xl p-6">
@@ -458,31 +378,34 @@ function App() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
-                <input
-                  type="text"
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/user/repo.git"
-                  className="w-full px-3 py-2 bg-[#3c3c3c] border border-[#4c4c4c] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowCloneModal(false)} className="flex-1 py-2 text-gray-400 hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button onClick={executeClone} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                  Clone
-                </button>
-              </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
+              <input
+                type="text"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="https://github.com/username/repo.git"
+                className="w-full px-3 py-2 bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCloneModal(false)}
+                className="flex-1 px-4 py-2 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={executeClone}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors">
+                {isLoading ? 'Cloning...' : 'Clone'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SSH Connect Modal */}
+      {/* SSH Modal */}
       {showSSHModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md bg-[#252526] rounded-xl border border-[#3c3c3c] shadow-2xl p-6">
@@ -492,51 +415,60 @@ function App() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Host</label>
-                <input
-                  type="text"
-                  value={sshHost}
-                  onChange={(e) => setSshHost(e.target.value)}
-                  placeholder="example.com"
-                  className="w-full px-3 py-2 bg-[#3c3c3c] border border-[#4c4c4c] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Username</label>
-                <input
-                  type="text"
-                  value={sshUser}
-                  onChange={(e) => setSshUser(e.target.value)}
-                  placeholder="user"
-                  className="w-full px-3 py-2 bg-[#3c3c3c] border border-[#4c4c4c] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowSSHModal(false)} className="flex-1 py-2 text-gray-400 hover:text-white transition-colors">
-                  Cancel
-                </button>
-                <button onClick={executeSSHConnect} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-                  Connect
-                </button>
-              </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-400 mb-2">Host</label>
+              <input
+                type="text"
+                value={sshHost}
+                onChange={(e) => setSshHost(e.target.value)}
+                placeholder="example.com"
+                className="w-full px-3 py-2 bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 mb-3"
+              />
+              <label className="block text-sm text-gray-400 mb-2">Username</label>
+              <input
+                type="text"
+                value={sshUser}
+                onChange={(e) => setSshUser(e.target.value)}
+                placeholder="root"
+                className="w-full px-3 py-2 bg-[#1e1e1e] border border-[#3c3c3c] rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSSHModal(false)}
+                className="flex-1 px-4 py-2 bg-[#3c3c3c] hover:bg-[#4c4c4c] text-white rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={executeSSHConnect}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors">
+                {isLoading ? 'Connecting...' : 'Connect'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        webkitdirectory=""
+        directory=""
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* Toasts */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-          />
-        ))}
-      </div>
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
     </div>
   )
 }

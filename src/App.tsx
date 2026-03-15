@@ -8,6 +8,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { Toast } from './components/ui/Toast'
 import { ActivityBar } from './components/ActivityBar'
 import { AIPanel } from './components/AIPanel'
+import { useEditorContext } from './contexts/EditorContext'
 import { getSettings, type Settings } from './services/settingsService'
 import { Folder, GitBranch, Terminal as TerminalIcon, Search, Command, X, Loader2 } from 'lucide-react'
 
@@ -27,6 +28,7 @@ interface Project {
 }
 
 function App() {
+  const { setFiles } = useEditorContext()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
@@ -98,21 +100,77 @@ function App() {
     fileInputRef.current?.click()
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files && files.length > 0) {
-      setIsLoading(true)
-      setTimeout(() => {
-        const projectName = files[0].name.split('/')[0] || 'New Project'
-        setCurrentProject({
-          name: projectName,
-          path: files[0].webkitRelativePath || projectName,
-          type: 'local'
-        })
-        setIsLoading(false)
-        addToast(`Project "${projectName}" opened successfully`, 'success')
-      }, 1000)
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files
+    if (!fileList || fileList.length === 0) return
+
+    setIsLoading(true)
+
+    // Determine project name from the common root folder
+    const firstPath = fileList[0].webkitRelativePath || fileList[0].name
+    const projectName = firstPath.split('/')[0] || 'New Project'
+
+    // Language detection helper
+    const extToLang: Record<string, string> = {
+      js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
+      json: 'json', md: 'markdown', css: 'css', html: 'html', py: 'python',
+      yml: 'yaml', yaml: 'yaml', sh: 'shell', txt: 'text',
     }
+
+    // Build a flat list of { path, content } by reading each file
+    const entries: { path: string; content: string }[] = []
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i]
+      const relPath = file.webkitRelativePath || file.name
+      // Skip node_modules, .git, dist, build
+      if (/\/(node_modules|\.git|dist|build)\//.test('/' + relPath)) continue
+      // Only read text-like files (< 500KB)
+      if (file.size > 500 * 1024) continue
+      try {
+        const text = await file.text()
+        // Strip the root folder prefix so paths start at project root
+        const stripped = relPath.includes('/') ? relPath.substring(relPath.indexOf('/') + 1) : relPath
+        entries.push({ path: stripped, content: text })
+      } catch { /* skip binary files */ }
+    }
+
+    // Build a tree structure from flat paths
+    interface BuildNode { id: string; name: string; type: 'file' | 'directory'; content?: string; language?: string; isOpen?: boolean; parentId?: string | null; children?: BuildNode[] }
+
+    const root: BuildNode = { id: 'root', name: projectName, type: 'directory', isOpen: true, parentId: null, children: [] }
+
+    for (const entry of entries) {
+      const parts = entry.path.split('/')
+      let current = root
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i]
+        const isFile = i === parts.length - 1
+        if (isFile) {
+          const ext = part.split('.').pop()?.toLowerCase() || ''
+          current.children!.push({
+            id: entry.path,
+            name: part,
+            type: 'file',
+            content: entry.content,
+            language: extToLang[ext] || 'text',
+            parentId: current.id,
+          })
+        } else {
+          let dir = current.children!.find(c => c.name === part && c.type === 'directory')
+          if (!dir) {
+            const dirId = parts.slice(0, i + 1).join('/')
+            dir = { id: dirId, name: part, type: 'directory', isOpen: true, parentId: current.id, children: [] }
+            current.children!.push(dir)
+          }
+          current = dir
+        }
+      }
+    }
+
+    setFiles([root])
+    setCurrentProject({ name: projectName, path: projectName, type: 'local' })
+    setIsLoading(false)
+    addToast(`Project "${projectName}" opened with ${entries.length} files`, 'success')
   }
 
   // Clone Repo

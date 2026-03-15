@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface EditorContextType {
   files: FileNode[];
+  setFiles: (files: FileNode[]) => void;
   tabs: Tab[];
   activeTabId: string | null;
   openFile: (file: FileNode) => void;
@@ -344,6 +345,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   return (
     <EditorContext.Provider value={{
       files,
+      setFiles,
       tabs,
       activeTabId,
       openFile,

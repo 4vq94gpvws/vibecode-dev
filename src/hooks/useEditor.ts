@@ -5,6 +5,7 @@ import { FileNode, AIContext } from '../types';
 export const useEditor = () => {
   const {
     files,
+    setFiles,
     tabs,
     activeTabId,
     openFile,
@@ -107,6 +108,7 @@ export const useEditor = () => {
 
   return {
     files: files || [],
+    setFiles,
     tabs: tabs || [],
     activeTab,
     activeTabId,

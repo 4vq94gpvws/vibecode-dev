@@ -6,8 +6,10 @@ import { Terminal } from './components/Terminal'
 import { StatusBar } from './components/StatusBar'
 import { SettingsModal } from './components/SettingsModal'
 import { Toast } from './components/ui/Toast'
+import { ActivityBar } from './components/ActivityBar'
+import { AIPanel } from './components/AIPanel'
 import { getSettings, type Settings } from './services/settingsService'
-import { Folder, GitBranch, Terminal as TerminalIcon, Search, Command, X, Minus, Square, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Folder, GitBranch, Terminal as TerminalIcon, Search, Command, X, Loader2 } from 'lucide-react'
 
 export type ToastType = 'success' | 'error' | 'info'
 
@@ -37,6 +39,8 @@ function App() {
   const [sshHost, setSshHost] = useState('')
   const [sshUser, setSshUser] = useState('')
   const [isTerminalVisible, setIsTerminalVisible] = useState(true)
+  const [activePanel, setActivePanel] = useState('files')
+  const [isChatOpen, setIsChatOpen] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -49,6 +53,10 @@ function App() {
       if (e.ctrlKey && e.key === '`') {
         e.preventDefault()
         setIsTerminalVisible(prev => !prev)
+      }
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault()
+        setIsChatOpen(prev => !prev)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -72,17 +80,12 @@ function App() {
     setSettings(getSettings())
   }
 
-  // Window controls
-  const handleClose = () => {
-    addToast('Window close requested', 'info')
-  }
-
-  const handleMinimize = () => {
-    addToast('Window minimized', 'info')
-  }
-
-  const handleMaximize = () => {
-    addToast('Window maximized', 'info')
+  const handlePanelSelect = (panel: string) => {
+    if (panel === 'chat') {
+      setIsChatOpen(prev => !prev)
+    } else {
+      setActivePanel(panel)
+    }
   }
 
   // Upgrade to Pro
@@ -197,7 +200,14 @@ function App() {
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
+          {/* Activity Bar */}
+          <ActivityBar
+            activePanel={activePanel}
+            isChatOpen={isChatOpen}
+            onSelect={handlePanelSelect}
+          />
+
+          {/* File Explorer */}
           <FileExplorer />
 
           {/* Editor Area */}
@@ -212,6 +222,13 @@ function App() {
               </div>
             )}
           </div>
+
+          {/* AI Chat Panel */}
+          {isChatOpen && (
+            <div className="w-[350px] flex-shrink-0 border-l border-[#3c3c3c]">
+              <AIPanel />
+            </div>
+          )}
         </div>
 
         {/* Status Bar */}

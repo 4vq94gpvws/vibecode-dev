@@ -296,7 +296,8 @@ function App() {
         <SettingsModal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
-          onSave={handleSettingsSaved}
+          onSaved={handleSettingsSaved}
+          onShowToast={addToast}
         />
 
         {/* Toasts */}
@@ -408,7 +409,8 @@ function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onSave={handleSettingsSaved}
+        onSaved={handleSettingsSaved}
+        onShowToast={addToast}
       />
 
       {/* Upgrade Modal */}

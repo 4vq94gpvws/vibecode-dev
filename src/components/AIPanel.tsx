@@ -46,6 +46,19 @@ function collectFiles(nodes: FileNode[]): FileNode[] {
   return result
 }
 
+function buildFileTree(nodes: FileNode[], indent = ''): string {
+  let tree = ''
+  for (const n of nodes) {
+    if (n.type === 'directory') {
+      tree += `${indent}${n.name}/\n`
+      if (n.children) tree += buildFileTree(n.children, indent + '  ')
+    } else {
+      tree += `${indent}${n.name}\n`
+    }
+  }
+  return tree
+}
+
 interface Props {
   onClose: () => void
 }
@@ -81,12 +94,17 @@ export function AIPanel({ onClose }: Props) {
     if (!text || loading) return
     setError(null)
 
-    // Add file context if active
-    let prompt = text
+    // Build context: project tree + active file content
+    let prompt = ''
+    const fileTree = buildFileTree(files)
+    if (fileTree) {
+      prompt += `[Project files]\n${fileTree}\n`
+    }
     const activeFile = activeFileId ? findFile(files, activeFileId) : null
     if (activeFile && activeFile.content) {
-      prompt = `[File: ${activeFile.name}]\n\`\`\`${activeFile.language || ''}\n${activeFile.content.slice(0, 3000)}\n\`\`\`\n\n${text}`
+      prompt += `[Open file: ${activeFile.id}]\n\`\`\`${activeFile.language || ''}\n${activeFile.content.slice(0, 3000)}\n\`\`\`\n`
     }
+    prompt += text
 
     const userMsg: ChatMsg = { id: Date.now().toString(), role: 'user', content: text, model }
     setMessages(prev => [...prev, userMsg])

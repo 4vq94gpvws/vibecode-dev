@@ -71,11 +71,11 @@ const defaultFiles: FileNode[] = [
             name: 'main.js',
             type: 'file',
             language: 'javascript',
-            content: `console.log('Hello from vibecode.dev!');
+            content: `console.log('Hello from VibeDraft.Dev!');
 
 // Try editing this file and see the changes live
 function greet(name) {
-  return \`Hello, \${name}! Welcome to vibecode.dev\`;
+  return \`Hello, \${name}! Welcome to VibeDraft.Dev\`;
 }
 
 console.log(greet('Developer'));`,
@@ -108,9 +108,9 @@ export const debounce = (fn, delay) => {
         type: 'file',
         language: 'json',
         content: `{
-  "name": "vibecode-project",
+  "name": "vibedraft-project",
   "version": "1.0.0",
-  "description": "A project created with vibecode.dev",
+  "description": "A project created with VibeDraft.Dev",
   "main": "src/main.js",
   "scripts": {
     "start": "node src/main.js",
@@ -127,7 +127,7 @@ export const debounce = (fn, delay) => {
         name: 'README.md',
         type: 'file',
         language: 'markdown',
-        content: `# Vibecode Project
+        content: `# VibeDraft Project
 
 Welcome to your new project!
 

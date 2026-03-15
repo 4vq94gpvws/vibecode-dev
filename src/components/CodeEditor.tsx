@@ -37,7 +37,7 @@ export function CodeEditor() {
       <div className="flex-1 flex items-center justify-center bg-[#1e1e1e]">
         <div className="text-center text-[#5a5a5a]">
           <Code2 size={64} strokeWidth={1} className="mx-auto mb-4" />
-          <p className="text-lg mb-1">vibecode.dev</p>
+          <p className="text-lg mb-1">VibeDraft.Dev</p>
           <p className="text-sm text-[#4a4a4a]">Open a file to start editing</p>
           <div className="mt-6 space-y-1 text-xs text-[#4a4a4a]">
             <p><kbd className="px-1.5 py-0.5 bg-[#2d2d30] rounded text-[#858585]">Ctrl+L</kbd> Toggle AI Chat</p>

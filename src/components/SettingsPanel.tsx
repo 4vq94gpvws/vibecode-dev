@@ -149,7 +149,7 @@ export function SettingsPanel() {
                 <span className="text-sm font-bold text-white">V</span>
               </div>
               <div>
-                <p className="font-medium">vibecode.dev</p>
+                <p className="font-medium">VibeDraft.Dev</p>
                 <p className="text-[10px] text-[#858585]">v1.0.0</p>
               </div>
             </div>

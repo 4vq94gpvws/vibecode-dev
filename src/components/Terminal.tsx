@@ -13,7 +13,7 @@ interface Props {
 
 export function Terminal({ onClose }: Props) {
   const [lines, setLines] = useState<Line[]>([
-    { id: 0, type: 'info', text: 'Welcome to vibecode.dev terminal' },
+    { id: 0, type: 'info', text: 'Welcome to VibeDraft.Dev terminal' },
     { id: 1, type: 'info', text: 'Type "help" for available commands.' },
   ])
   const [input, setInput] = useState('')

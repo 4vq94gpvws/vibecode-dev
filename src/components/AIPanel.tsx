@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Sparkles, AtSign, Paperclip, Cpu, Zap, Square, Loader2, Check, AlertCircle } from 'lucide-react'
+import { Send, X, Sparkles, AtSign, Paperclip, Cpu, Zap, Square, Loader2, Check, AlertCircle, Copy, CheckCheck } from 'lucide-react'
 import { useEditorStore, FileNode } from '../store/editorStore'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 // ─── Types ───
 type Model = 'sonnet' | 'opus' | 'kimi'
@@ -57,6 +61,62 @@ function buildFileTree(nodes: FileNode[], indent = ''): string {
     }
   }
   return tree
+}
+
+// ─── Code Block with copy button ───
+function CodeBlock({ className, children, ...props }: any) {
+  const [copied, setCopied] = useState(false)
+  const match = /language-(\w+)/.exec(className || '')
+  const lang = match ? match[1] : ''
+  const code = String(children).replace(/\n$/, '')
+
+  if (!match) {
+    return <code className="bg-[#1e1e1e] text-[#ce9178] px-1 py-0.5 rounded text-[12px]" {...props}>{children}</code>
+  }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="relative group my-2 rounded-md overflow-hidden border border-[#3e3e42]">
+      <div className="flex items-center justify-between px-3 py-1 bg-[#2d2d30] text-[10px] text-[#858585]">
+        <span>{lang}</span>
+        <button onClick={handleCopy} className="flex items-center gap-1 hover:text-[#cccccc] transition-colors">
+          {copied ? <><CheckCheck size={12} /> Copied</> : <><Copy size={12} /> Copy</>}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={vscDarkPlus}
+        language={lang}
+        PreTag="div"
+        customStyle={{ margin: 0, padding: '12px', fontSize: '12px', background: '#1e1e1e', borderRadius: 0 }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  )
+}
+
+// ─── Markdown components ───
+const mdComponents = {
+  code: CodeBlock,
+  p: ({ children }: any) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }: any) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }: any) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+  li: ({ children }: any) => <li className="text-[13px]">{children}</li>,
+  h1: ({ children }: any) => <h1 className="text-base font-semibold text-white mb-1 mt-2">{children}</h1>,
+  h2: ({ children }: any) => <h2 className="text-[14px] font-semibold text-white mb-1 mt-2">{children}</h2>,
+  h3: ({ children }: any) => <h3 className="text-[13px] font-semibold text-white mb-1 mt-1">{children}</h3>,
+  a: ({ href, children }: any) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-[#3794ff] hover:underline">{children}</a>,
+  blockquote: ({ children }: any) => <blockquote className="border-l-2 border-[#007acc] pl-3 my-2 text-[#858585] italic">{children}</blockquote>,
+  table: ({ children }: any) => <div className="overflow-x-auto my-2"><table className="text-[12px] border-collapse w-full">{children}</table></div>,
+  th: ({ children }: any) => <th className="border border-[#3e3e42] px-2 py-1 bg-[#2d2d30] text-left text-[#cccccc]">{children}</th>,
+  td: ({ children }: any) => <td className="border border-[#3e3e42] px-2 py-1">{children}</td>,
+  strong: ({ children }: any) => <strong className="text-white font-semibold">{children}</strong>,
+  hr: () => <hr className="border-[#3e3e42] my-3" />,
 }
 
 interface Props {
@@ -366,8 +426,10 @@ export function AIPanel({ onClose }: Props) {
                   </div>
                 ) : (
                   <div>
-                    <div className="text-[13px] leading-relaxed text-[#d4d4d4] whitespace-pre-wrap">
-                      {msg.content}
+                    <div className="text-[13px] leading-relaxed text-[#d4d4d4] chat-markdown">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                     {msg.model && (
                       <div className="text-[9px] mt-0.5" style={{ color: MODEL_CONFIG[msg.model]?.color || '#858585' }}>

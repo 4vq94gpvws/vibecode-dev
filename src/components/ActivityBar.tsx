@@ -1,75 +1,68 @@
-import React from 'react';
-import {
-  MessageSquare,
-  FolderOpen,
-  Search,
-  GitBranch,
-  Settings,
-  Bug,
-  Puzzle,
-  User,
-} from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import { Settings, Bot } from 'lucide-react'
+import { getSettings } from '../services/settingsService'
 
 interface ActivityBarProps {
-  activeView: string;
-  onViewChange: (view: string) => void;
+  onOpenSettings: () => void
 }
 
-const activities = [
-  { id: 'explorer', icon: FolderOpen, label: 'Explorer' },
-  { id: 'search', icon: Search, label: 'Search' },
-  { id: 'chat', icon: MessageSquare, label: 'Chat' },
-  { id: 'git', icon: GitBranch, label: 'Source Control' },
-  { id: 'debug', icon: Bug, label: 'Debug' },
-  { id: 'extensions', icon: Puzzle, label: 'Extensions' },
-];
-
-export function ActivityBar({ activeView, onViewChange }: ActivityBarProps) {
-  const { openSettings } = useSettings();
+export function ActivityBar({ onOpenSettings }: ActivityBarProps) {
+  const settings = getSettings()
+  
+  const getProviderLabel = () => {
+    switch (settings.aiProvider.provider) {
+      case 'claude':
+        return 'Claude'
+      case 'kimi':
+        return 'Kimi'
+      case 'openai':
+        return 'OpenAI'
+      case 'custom':
+        return 'Custom'
+      default:
+        return 'AI'
+    }
+  }
+  
+  const getProviderColor = () => {
+    switch (settings.aiProvider.provider) {
+      case 'claude':
+        return 'text-orange-400'
+      case 'kimi':
+        return 'text-purple-400'
+      case 'openai':
+        return 'text-green-400'
+      case 'custom':
+        return 'text-blue-400'
+      default:
+        return 'text-gray-400'
+    }
+  }
 
   return (
-    <div className="w-12 bg-[#333333] flex flex-col items-center py-2">
-      <div className="flex-1 flex flex-col gap-1">
-        {activities.map((activity) => {
-          const Icon = activity.icon;
-          const isActive = activeView === activity.id;
-          
-          return (
-            <button
-              key={activity.id}
-              onClick={() => onViewChange(activity.id)}
-              className={`relative p-2.5 rounded-lg transition-all group ${
-                isActive
-                  ? 'text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-[#3c3c3c]'
-              }`}
-              title={activity.label}
-            >
-              <Icon className="w-6 h-6" />
-              {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-r-full" />
-              )}
-            </button>
-          );
-        })}}
+    <header className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Bot className="w-6 h-6 text-blue-400" />
+          <span className="font-semibold text-white">VibeCode</span>
+        </div>
+        
+        <div className="h-6 w-px bg-gray-600 mx-2" />
+        
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-700/50 ${getProviderColor()}`}>
+          <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+          <span className="text-sm font-medium">{getProviderLabel()}</span>
+          <span className="text-xs text-gray-400">{settings.aiProvider.model}</span>
+        </div>
       </div>
-
-      <div className="flex flex-col gap-1">
-        <button
-          onClick={openSettings}
-          className="p-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#3c3c3c] transition-all"
-          title="Settings"
-        >
-          <Settings className="w-6 h-6" />
-        </button>
-        <button
-          className="p-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#3c3c3c] transition-all"
-          title="Account"
-        >
-          <User className="w-6 h-6" />
-        </button>
-      </div>
-    </div>
-  );
+      
+      <button
+        onClick={onOpenSettings}
+        className="flex items-center gap-2 px-3 py-1.5 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+        title="Settings"
+      >
+        <Settings className="w-5 h-5" />
+        <span className="text-sm">Settings</span>
+      </button>
+    </header>
+  )
 }

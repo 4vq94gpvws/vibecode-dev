@@ -1,347 +1,327 @@
-import { Message, AIProvider, AIConfig } from '../types';
+import { getSettings, type AIProvider } from './settingsService'
 
-interface AIResponse {
-  content: string;
-  model: string;
-  provider: AIProvider;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system'
+  content: string
 }
 
-interface StreamChunk {
-  content: string;
-  done: boolean;
+export interface ChatCompletionOptions {
+  messages: ChatMessage[]
+  onStream?: (chunk: string) => void
+  temperature?: number
+  maxTokens?: number
+}
+
+export interface ChatCompletionResult {
+  content: string
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
 }
 
 export class AIService {
-  private config: AIConfig;
+  private provider: AIProvider
 
-  constructor(config: AIConfig) {
-    this.config = config;
+  constructor() {
+    this.provider = getSettings().aiProvider
   }
 
-  updateConfig(config: AIConfig) {
-    this.config = config;
+  refreshProvider() {
+    this.provider = getSettings().aiProvider
   }
 
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
+  async chatCompletion(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+    this.refreshProvider()
 
-    switch (this.config.provider) {
-      case 'claude':
-        headers['x-api-key'] = this.config.apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-        break;
-      case 'openai':
-        headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-        break;
-      case 'kimi':
-        headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-        break;
-      case 'custom':
-        if (this.config.apiKey) {
-          headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-        }
-        break;
-      case 'ollama':
-        // Ollama doesn't require auth by default
-        break;
+    if (!this.provider.apiKey && this.provider.provider !== 'kimi') {
+      // Return mock response if no API key
+      return this.mockResponse(options.messages)
     }
 
-    return headers;
-
-  }
-
-  private getEndpoint(): string {
-    const baseUrl = this.config.baseUrl || this.getDefaultBaseUrl();
-    
-    switch (this.config.provider) {
+    switch (this.provider.provider) {
       case 'claude':
-        return `${baseUrl}/v1/messages`;
+        return this.callClaude(options)
       case 'openai':
-        return `${baseUrl}/v1/chat/completions`;
+        return this.callOpenAI(options)
       case 'kimi':
-        return `${baseUrl}/v1/chat/completions`;
-      case 'ollama':
-        return `${baseUrl}/api/chat`;
+        return this.callKimi(options)
       case 'custom':
-        return `${baseUrl}/v1/chat/completions`;
+        return this.callCustom(options)
       default:
-        return `${baseUrl}/v1/chat/completions`;
+        return this.mockResponse(options.messages)
     }
   }
 
-  private getDefaultBaseUrl(): string {
-    switch (this.config.provider) {
-      case 'claude':
-        return 'https://api.anthropic.com';
-      case 'openai':
-        return 'https://api.openai.com';
-      case 'kimi':
-        return 'https://api.moonshot.cn';
-      case 'ollama':
-        return 'http://localhost:11434';
-      case 'custom':
-        return '';
-      default:
-        return '';
-    }
-  }
-
-  private formatMessages(messages: Message[]): any[] {
-    switch (this.config.provider) {
-      case 'claude':
-        return messages.map(m => ({
-          role: m.role === 'user' ? 'user' : 'assistant',
+  private async callClaude(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+    const response = await fetch(`${this.provider.baseUrl}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.provider.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: this.provider.model,
+        max_tokens: options.maxTokens || 4096,
+        temperature: options.temperature ?? 0.7,
+        messages: options.messages.map(m => ({
+          role: m.role === 'system' ? 'user' : m.role,
           content: m.content,
-        }));
-      case 'openai':
-      case 'kimi':
-      case 'custom':
-      case 'ollama':
-      default:
-        return messages.map(m => ({
-          role: m.role,
-          content: m.content,
-        }));
+        })),
+        stream: !!options.onStream,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || `Claude API error: ${response.status}`)
+    }
+
+    if (options.onStream && response.body) {
+      return this.handleStream(response.body, options.onStream)
+    }
+
+    const data = await response.json()
+    return {
+      content: data.content?.[0]?.text || '',
+      usage: data.usage,
     }
   }
 
-  private buildRequestBody(messages: Message[], stream: boolean = false): any {
-    const formattedMessages = this.formatMessages(messages);
-    
-    switch (this.config.provider) {
-      case 'claude':
-        return {
-          model: this.config.model,
-          messages: formattedMessages,
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          stream,
-        };
-      case 'openai':
-      case 'kimi':
-      case 'custom':
-        return {
-          model: this.config.model,
-          messages: formattedMessages,
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          stream,
-        };
-      case 'ollama':
-        return {
-          model: this.config.model,
-          messages: formattedMessages,
-          stream,
-          options: {
-            temperature: this.config.temperature,
-            num_predict: this.config.maxTokens,
-          },
-        };
-      default:
-        return {
-          model: this.config.model,
-          messages: formattedMessages,
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          stream,
-        };
+  private async callOpenAI(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+    const response = await fetch(`${this.provider.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.provider.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.provider.model,
+        messages: options.messages,
+        max_tokens: options.maxTokens,
+        temperature: options.temperature ?? 0.7,
+        stream: !!options.onStream,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || `OpenAI API error: ${response.status}`)
+    }
+
+    if (options.onStream && response.body) {
+      return this.handleOpenAIStream(response.body, options.onStream)
+    }
+
+    const data = await response.json()
+    return {
+      content: data.choices?.[0]?.message?.content || '',
+      usage: data.usage,
     }
   }
 
-  private parseResponse(response: any): AIResponse {
-    switch (this.config.provider) {
-      case 'claude':
-        return {
-          content: response.content?.[0]?.text || '',
-          model: response.model || this.config.model,
-          provider: this.config.provider,
-          usage: response.usage,
-        };
-      case 'openai':
-      case 'kimi':
-      case 'custom':
-        return {
-          content: response.choices?.[0]?.message?.content || '',
-          model: response.model || this.config.model,
-          provider: this.config.provider,
-          usage: response.usage,
-        };
-      case 'ollama':
-        return {
-          content: response.message?.content || '',
-          model: response.model || this.config.model,
-          provider: this.config.provider,
-        };
-      default:
-        return {
-          content: response.choices?.[0]?.message?.content || '',
-          model: response.model || this.config.model,
-          provider: this.config.provider,
-        };
+  private async callKimi(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+    // Ollama API format
+    const response = await fetch(`${this.provider.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.provider.model,
+        messages: options.messages,
+        stream: !!options.onStream,
+        options: {
+          temperature: options.temperature ?? 0.7,
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`)
+    }
+
+    if (options.onStream && response.body) {
+      return this.handleOllamaStream(response.body, options.onStream)
+    }
+
+    const data = await response.json()
+    return {
+      content: data.message?.content || '',
     }
   }
 
-  async sendMessage(messages: Message[]): Promise<AIResponse> {
-    // Validate config
-    if (!this.config.model) {
-      throw new Error('No model selected');
+  private async callCustom(options: ChatCompletionOptions): Promise<ChatCompletionResult> {
+    // Generic OpenAI-compatible API
+    const response = await fetch(`${this.provider.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.provider.apiKey && { 'Authorization': `Bearer ${this.provider.apiKey}` }),
+      },
+      body: JSON.stringify({
+        model: this.provider.model,
+        messages: options.messages,
+        max_tokens: options.maxTokens,
+        temperature: options.temperature ?? 0.7,
+        stream: !!options.onStream,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.error?.message || `API error: ${response.status}`)
     }
 
-    if (this.config.provider !== 'ollama' && !this.config.apiKey) {
-      throw new Error(`API key required for ${this.config.provider}`);
+    if (options.onStream && response.body) {
+      return this.handleOpenAIStream(response.body, options.onStream)
     }
 
-    const endpoint = this.getEndpoint();
-    const headers = this.getHeaders();
-    const body = this.buildRequestBody(messages, false);
+    const data = await response.json()
+    return {
+      content: data.choices?.[0]?.message?.content || '',
+      usage: data.usage,
+    }
+  }
+
+  private async handleStream(
+    body: ReadableStream<Uint8Array>,
+    onChunk: (chunk: string) => void
+  ): Promise<ChatCompletionResult> {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API error: ${response.status} - ${error}`);
-      }
-
-      const data = await response.json();
-      return this.parseResponse(data);
-    } catch (error) {
-      console.error('AI Service Error:', error);
-      throw error;
-    }
-  }
-
-  async *streamMessage(messages: Message[]): AsyncGenerator<StreamChunk> {
-    // Validate config
-    if (!this.config.model) {
-      throw new Error('No model selected');
-    }
-
-    if (this.config.provider !== 'ollama' && !this.config.apiKey) {
-      throw new Error(`API key required for ${this.config.provider}`);
-    }
-
-    const endpoint = this.getEndpoint();
-    const headers = this.getHeaders();
-    const body = this.buildRequestBody(messages, true);
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API error: ${response.status} - ${error}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done, value } = await reader.read()
+        if (done) break
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('
-');
-        buffer = lines.pop() || '';
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\
+')
 
         for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
 
-          if (trimmed.startsWith('data: ')) {
             try {
-              const data = JSON.parse(trimmed.slice(6));
-              const content = this.extractStreamContent(data);
+              const parsed = JSON.parse(data)
+              const content = parsed.delta?.text || parsed.content?.[0]?.text || ''
               if (content) {
-                yield { content, done: false };
+                fullContent += content
+                onChunk(content)
               }
-            } catch (e) {
-              // Skip invalid JSON
-            }
-          } else if (this.config.provider === 'ollama') {
-            // Ollama doesn't use SSE format
-            try {
-              const data = JSON.parse(trimmed);
-              const content = data.message?.content || '';
-              if (content) {
-                yield { content, done: data.done || false };
-              }
-            } catch (e) {
-              // Skip invalid JSON
+            } catch {
+              // Ignore parse errors
             }
           }
         }
       }
-
-      yield { content: '', done: true };
-    } catch (error) {
-      console.error('AI Stream Error:', error);
-      throw error;
+    } finally {
+      reader.releaseLock()
     }
+
+    return { content: fullContent }
   }
 
-  private extractStreamContent(data: any): string {
-    switch (this.config.provider) {
-      case 'claude':
-        return data.delta?.text || '';
-      case 'openai':
-      case 'kimi':
-      case 'custom':
-        return data.choices?.[0]?.delta?.content || '';
-      case 'ollama':
-        return data.message?.content || '';
-      default:
-        return data.choices?.[0]?.delta?.content || '';
+  private async handleOpenAIStream(
+    body: ReadableStream<Uint8Array>,
+    onChunk: (chunk: string) => void
+  ): Promise<ChatCompletionResult> {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\
+')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') continue
+
+            try {
+              const parsed = JSON.parse(data)
+              const content = parsed.choices?.[0]?.delta?.content || ''
+              if (content) {
+                fullContent += content
+                onChunk(content)
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
     }
+
+    return { content: fullContent }
   }
 
-  validateConfig(): { valid: boolean; error?: string } {
-    if (!this.config.model) {
-      return { valid: false, error: 'No model selected' };
+  private async handleOllamaStream(
+    body: ReadableStream<Uint8Array>,
+    onChunk: (chunk: string) => void
+  ): Promise<ChatCompletionResult> {
+    const reader = body.getReader()
+    const decoder = new TextDecoder()
+    let fullContent = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\
+').filter(Boolean)
+
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line)
+            const content = parsed.message?.content || ''
+            if (content) {
+              fullContent += content
+              onChunk(content)
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock()
     }
 
-    if (this.config.provider !== 'ollama' && !this.config.apiKey) {
-      return { valid: false, error: `API key required for ${this.config.provider}` };
+    return { content: fullContent }
+  }
+
+  private mockResponse(messages: ChatMessage[]): ChatCompletionResult {
+    const lastMessage = messages[messages.length - 1]
+    const content = lastMessage?.content || ''
+    
+    // Simple mock responses based on keywords
+    let response = 'This is a mock response. Please configure your API key in settings to use real AI providers.'
+    
+    if (content.toLowerCase().includes('hello') || content.toLowerCase().includes('hi')) {
+      response = 'Hello! I am a mock AI assistant. Configure your API key in the settings to use a real AI provider like Claude, OpenAI, or Ollama.'
+    } else if (content.toLowerCase().includes('code') || content.toLowerCase().includes('function')) {
+      response = 'I would love to help you with code! Please configure your API key in settings to get real AI-powered code assistance.'
     }
 
-    return { valid: true };
+    return { content: response }
   }
 }
 
-// Singleton instance
-let aiServiceInstance: AIService | null = null;
-
-export function getAIService(config?: AIConfig): AIService {
-  if (!aiServiceInstance && config) {
-    aiServiceInstance = new AIService(config);
-  } else if (aiServiceInstance && config) {
-    aiServiceInstance.updateConfig(config);
-  }
-  return aiServiceInstance!;
-}
-
-export function createAIService(config: AIConfig): AIService {
-  aiServiceInstance = new AIService(config);
-  return aiServiceInstance;
-}
+export const aiService = new AIService()

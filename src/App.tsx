@@ -1,182 +1,102 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Editor } from './components/Editor';
-import { Sidebar } from './components/Sidebar';
-import { ActivityBar } from './components/ActivityBar';
-import { StatusBar } from './components/StatusBar';
-import { ChatPanel } from './components/ChatPanel';
-import { SettingsModal } from './components/SettingsModal';
-import { useSettings } from './contexts/SettingsContext';
-import { getAIService } from './services/aiService';
-import { Message, Conversation } from './types';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useEffect } from 'react'
+import { ActivityBar } from './components/ActivityBar'
+import { SettingsModal } from './components/SettingsModal'
+import { Toast } from './components/ui/Toast'
+import { getSettings, type Settings } from './services/settingsService'
 
-function App() {
-  const [activeView, setActiveView] = useState('chat');
-  const [activeFile, setActiveFile] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const { settings, isSettingsOpen, closeSettings, getCurrentProviderConfig } = useSettings();
+export type ToastType = 'success' | 'error' | 'info'
 
-  // Initialize AI service with current settings
-  useEffect(() => {
-    const config = getCurrentProviderConfig();
-    getAIService({
-      ...config,
-      temperature: settings.ai.temperature,
-      maxTokens: settings.ai.maxTokens,
-    });
-  }, [settings.ai, getCurrentProviderConfig]);
-
-  // Create new conversation
-  const createNewConversation = useCallback(() => {
-    const newConversation: Conversation = {
-      id: uuidv4(),
-      title: 'New Chat',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      model: settings.ai.model,
-      provider: settings.ai.provider,
-    };
-    setConversations(prev => [newConversation, ...prev]);
-    setActiveConversationId(newConversation.id);
-    setActiveView('chat');
-  }, [settings.ai.model, settings.ai.provider]);
-
-  // Load initial conversation
-  useEffect(() => {
-    if (conversations.length === 0) {
-      createNewConversation();
-    }
-  }, [conversations.length, createNewConversation]);
-
-  const activeConversation = conversations.find(c => c.id === activeConversationId);
-
-  const handleSendMessage = async (content: string) => {
-    if (!activeConversation) return;
-
-    const userMessage: Message = {
-      id: uuidv4(),
-      role: 'user',
-      content,
-      timestamp: Date.now(),
-    };
-
-    // Update conversation with user message
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === activeConversationId
-          ? {
-              ...c,
-              messages: [...c.messages, userMessage],
-              updatedAt: Date.now(),
-              title: c.messages.length === 0 ? content.slice(0, 50) + (content.length > 50 ? '...' : '') : c.title,
-            }
-          : c
-      )
-    );
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const config = getCurrentProviderConfig();
-      const aiService = getAIService({
-        ...config,
-        temperature: settings.ai.temperature,
-        maxTokens: settings.ai.maxTokens,
-      });
-
-      const validation = aiService.validateConfig();
-      if (!validation.valid) {
-        throw new Error(validation.error || 'Invalid AI configuration');
-      }
-
-      const currentMessages = [...activeConversation.messages, userMessage];
-      const response = await aiService.sendMessage(currentMessages);
-
-      const assistantMessage: Message = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: response.content,
-        timestamp: Date.now(),
-        model: response.model,
-        provider: response.provider,
-      };
-
-      setConversations(prev =>
-        prev.map(c =>
-          c.id === activeConversationId
-            ? {
-                ...c,
-                messages: [...c.messages, assistantMessage],
-                updatedAt: Date.now(),
-              }
-            : c
-        )
-      );
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      console.error('Error sending message:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteConversation = (id: string) => {
-    setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConversationId === id) {
-      const remaining = conversations.filter(c => c.id !== id);
-      setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
-    }
-  };
-
-  const handleClearConversations = () => {
-    if (confirm('Are you sure you want to clear all conversations?')) {
-      setConversations([]);
-      setActiveConversationId(null);
-    }
-  };
-
-  return (
-    <div className="flex h-screen bg-[#1e1e1e] text-white overflow-hidden">
-      <ActivityBar activeView={activeView} onViewChange={setActiveView} />
-      
-      <Sidebar
-        activeView={activeView}
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onConversationSelect={setActiveConversationId}
-        onNewConversation={createNewConversation}
-        onDeleteConversation={handleDeleteConversation}
-        onClearConversations={handleClearConversations}
-      />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 flex">
-          <div className="flex-1 flex flex-col min-w-0">
-            {activeView === 'chat' ? (
-              <ChatPanel
-                conversation={activeConversation}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoading}
-                error={error}
-              />
-            ) : (
-              <Editor file={activeFile} />
-            )}
-          </div>
-        </div>
-        <StatusBar />
-      </div>
-
-      <SettingsModal isOpen={isSettingsOpen} onClose={closeSettings} />
-    </div>
-  );
+export interface ToastMessage {
+  id: string
+  message: string
+  type: ToastType
 }
 
-export default App;
+function App() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [settings, setSettings] = useState<Settings | null>(null)
+
+  useEffect(() => {
+    setSettings(getSettings())
+  }, [])
+
+  const addToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts((prev) => [...prev, { id, message, type }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id))
+    }, 3000)
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const handleSettingsSaved = () => {
+    addToast('Settings saved successfully', 'success')
+    setSettings(getSettings())
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100">
+      <ActivityBar onOpenSettings={() => setIsSettingsOpen(true)} />
+      
+      <main className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold mb-4">VibeCode.dev</h1>
+          <p className="text-gray-400 mb-8">
+            AI-powered development environment. Configure your AI providers in the settings.
+          </p>
+          
+          {settings && (
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <h2 className="text-xl font-semibold mb-4">Current Configuration</h2>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Active Provider:</span>
+                  <span className="font-medium text-blue-400">
+                    {settings.aiProvider.provider === 'claude' && 'Claude (Anthropic)'}
+                    {settings.aiProvider.provider === 'kimi' && 'Kimi (Ollama)'}
+                    {settings.aiProvider.provider === 'openai' && 'OpenAI'}
+                    {settings.aiProvider.provider === 'custom' && 'Custom'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Model:</span>
+                  <span className="font-medium">{settings.aiProvider.model}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">API Key:</span>
+                  <span className="font-medium">
+                    {settings.aiProvider.apiKey ? '✓ Configured' : '✗ Not set'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSaved={handleSettingsSaved}
+        onShowToast={addToast}
+      />
+
+      <div className="fixed bottom-4 right-4 space-y-2 z-50">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default App

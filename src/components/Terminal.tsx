@@ -123,7 +123,11 @@ export function Terminal({ onClose }: Props) {
           <span className="text-[11px] uppercase tracking-wider text-[#cccccc] font-medium">Terminal</span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="p-1 hover:bg-[#3c3c3c] rounded text-[#cccccc]" title="New Terminal">
+          <button
+            onClick={() => { setLines([{ id: 0, type: 'info', text: 'New terminal session.' }]); setNextId(1); setCwd('/project'); setInput(''); setHistory([]); setHistIdx(-1) }}
+            className="p-1 hover:bg-[#3c3c3c] rounded text-[#cccccc]"
+            title="New Terminal"
+          >
             <Plus size={14} />
           </button>
           <button onClick={onClose} className="p-1 hover:bg-[#3c3c3c] rounded text-[#cccccc]" title="Close">

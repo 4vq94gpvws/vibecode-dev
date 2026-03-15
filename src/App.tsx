@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { ActivityBar } from './components/ActivityBar'
 import { FileExplorer } from './components/FileExplorer'
+import { SearchPanel } from './components/SearchPanel'
+import { GitPanel } from './components/GitPanel'
+import { SettingsPanel } from './components/SettingsPanel'
 import { TabBar } from './components/TabBar'
 import { CodeEditor } from './components/CodeEditor'
 import { Terminal } from './components/Terminal'
 import { AIPanel } from './components/AIPanel'
 import { StatusBar } from './components/StatusBar'
 import { useEditorStore, FileNode } from './store/editorStore'
-import { Folder, GitBranch, Terminal as TerminalIcon, Loader2 } from 'lucide-react'
+import { Folder, Terminal as TerminalIcon, Loader2 } from 'lucide-react'
 
 const extToLang: Record<string, string> = {
   js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
@@ -17,6 +20,7 @@ const extToLang: Record<string, string> = {
 
 function App() {
   const setFiles = useEditorStore(s => s.setFiles)
+  const activeView = useEditorStore(s => s.activeView)
   const [chatOpen, setChatOpen] = useState(true)
   const [terminalOpen, setTerminalOpen] = useState(true)
   const [hasProject, setHasProject] = useState(false)
@@ -56,7 +60,6 @@ function App() {
       } catch { /* skip binary */ }
     }
 
-    // Build tree from flat paths
     const root: FileNode = { id: 'root', name, type: 'directory', isOpen: true, parentId: null, children: [] }
     for (const entry of entries) {
       const parts = entry.path.split('/')
@@ -92,13 +95,11 @@ function App() {
     setIsLoading(false)
   }
 
-  // Use demo project
   const handleDemo = () => {
     setProjectName('project')
     setHasProject(true)
   }
 
-  // Hidden file input
   const fileInput = (
     <input
       ref={fileInputRef}
@@ -110,6 +111,16 @@ function App() {
       onChange={handleFileSelect}
     />
   )
+
+  // Render the correct sidebar based on activeView
+  const renderSidebar = () => {
+    switch (activeView) {
+      case 'search': return <SearchPanel />
+      case 'git': return <GitPanel />
+      case 'settings': return <SettingsPanel />
+      default: return <FileExplorer />
+    }
+  }
 
   // ─── Welcome Screen ───
   if (!hasProject) {
@@ -163,7 +174,9 @@ function App() {
       {/* Main Area */}
       <div className="flex-1 flex overflow-hidden">
         <ActivityBar chatOpen={chatOpen} onToggleChat={() => setChatOpen(p => !p)} />
-        <FileExplorer />
+
+        {/* Dynamic Sidebar */}
+        {renderSidebar()}
 
         {/* Editor + Terminal */}
         <div className="flex-1 flex flex-col min-w-0">

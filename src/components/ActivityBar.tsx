@@ -1,7 +1,7 @@
 import { Files, Search, GitBranch, MessageSquare, Settings } from 'lucide-react'
 import { useEditorStore } from '../store/editorStore'
 
-type ViewType = 'explorer' | 'search' | 'git'
+type ViewType = 'explorer' | 'search' | 'git' | 'settings'
 
 const topItems: { id: ViewType; icon: typeof Files; label: string }[] = [
   { id: 'explorer', icon: Files, label: 'Explorer' },
@@ -53,9 +53,15 @@ export function ActivityBar({ chatOpen, onToggleChat }: Props) {
         </button>
         <button
           title="Settings"
-          className="w-12 h-12 flex items-center justify-center text-[#858585] hover:text-white transition-colors"
+          onClick={() => setActiveView('settings')}
+          className={`w-12 h-12 flex items-center justify-center relative transition-colors ${
+            activeView === 'settings' ? 'text-white' : 'text-[#858585] hover:text-white'
+          }`}
         >
           <Settings size={24} strokeWidth={1.5} />
+          {activeView === 'settings' && (
+            <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-white rounded-r" />
+          )}
         </button>
       </div>
     </div>

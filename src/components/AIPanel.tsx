@@ -123,15 +123,43 @@ interface Props {
   onClose: () => void
 }
 
+// ─── LocalStorage helpers for chat persistence ───
+function loadChatState() {
+  try {
+    const raw = localStorage.getItem('vibecode-chat')
+    if (raw) {
+      const data = JSON.parse(raw)
+      return {
+        messages: (data.messages || []) as ChatMsg[],
+        model: (data.model || 'sonnet') as Model,
+        conversationId: data.conversationId || null,
+      }
+    }
+  } catch {}
+  return { messages: [], model: 'sonnet' as Model, conversationId: null }
+}
+
+function saveChatState(messages: ChatMsg[], model: Model, conversationId: string | null) {
+  try {
+    localStorage.setItem('vibecode-chat', JSON.stringify({ messages: messages.slice(-100), model, conversationId }))
+  } catch {}
+}
+
 export function AIPanel({ onClose }: Props) {
-  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const initial = useRef(loadChatState())
+  const [messages, setMessages] = useState<ChatMsg[]>(initial.current.messages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [model, setModel] = useState<Model>('sonnet')
+  const [model, setModel] = useState<Model>(initial.current.model)
   const [tools, setTools] = useState<ToolStatus[]>([])
   const [showFilePicker, setShowFilePicker] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(initial.current.conversationId)
+
+  // Persist chat state on changes
+  useEffect(() => {
+    saveChatState(messages, model, conversationId)
+  }, [messages, model, conversationId])
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface FileNode {
   id: string
@@ -150,7 +151,9 @@ Happy coding!`,
   },
 ]
 
-export const useEditorStore = create<EditorState>((set, get) => ({
+export const useEditorStore = create<EditorState>()(
+  persist(
+    (set, get) => ({
   // View state
   activeView: 'explorer',
   setActiveView: (view) => set({ activeView: view }),
@@ -341,4 +344,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }))
   },
   clearAIMessages: () => set({ aiMessages: [] }),
-}))
+    }),
+    {
+      name: 'vibecode-editor',
+      partialize: (state) => ({
+        files: state.files,
+        tabs: state.tabs,
+        activeFileId: state.activeFileId,
+        activeView: state.activeView,
+        aiMessages: state.aiMessages,
+      }),
+    },
+  ),
+)

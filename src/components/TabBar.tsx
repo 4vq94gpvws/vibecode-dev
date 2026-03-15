@@ -1,100 +1,77 @@
-import React, { useRef } from 'react';
-import { useEditor } from '../hooks/useEditor';
-import { X, FileCode } from 'lucide-react';
+import { X } from 'lucide-react'
+import { useEditorStore, FileNode } from '../store/editorStore'
 
-export const TabBar: React.FC = () => {
-  const { tabs, activeTabId, setActiveTab, closeTab, reorderTabs } = useEditor();
-  const dragItem = useRef<number | null>(null);
-  const dragOverItem = useRef<number | null>(null);
-
-  const handleDragStart = (index: number) => {
-    dragItem.current = index;
-  };
-
-  const handleDragEnter = (index: number) => {
-    dragOverItem.current = index;
-  };
-
-  const handleDragEnd = () => {
-    if (dragItem.current !== null && dragOverItem.current !== null) {
-      reorderTabs(dragItem.current, dragOverItem.current);
-    }
-    dragItem.current = null;
-    dragOverItem.current = null;
-  };
-
-  const getFileIcon = (filename: string) => {
-    const ext = filename?.split('.').pop()?.toLowerCase();
-    const colorClass = {
-      ts: 'text-blue-400',
-      tsx: 'text-blue-400',
-      js: 'text-yellow-400',
-      jsx: 'text-yellow-400',
-      json: 'text-green-400',
-      md: 'text-gray-400',
-      css: 'text-cyan-400',
-      html: 'text-orange-400'
-    }[ext || ''] || 'text-gray-400';
-    return <FileCode size={14} className={colorClass} />;
-  };
-
-  // Validate tabs array
-  const validTabs = Array.isArray(tabs) ? tabs : [];
-
-  if (validTabs.length === 0) {
-    return (
-      <div className="h-9 bg-editor-sidebar border-b border-editor-border flex items-center px-4">
-        <span className="text-xs text-gray-500">No files open</span>
-      </div>
-    );
+function getTabIcon(name: string): { color: string; label: string } {
+  const ext = name.split('.').pop()?.toLowerCase() || ''
+  switch (ext) {
+    case 'ts': case 'tsx': return { color: '#3178c6', label: 'TS' }
+    case 'js': case 'jsx': return { color: '#f1e05a', label: 'JS' }
+    case 'json': return { color: '#cb8622', label: '{}' }
+    case 'md': return { color: '#519aba', label: 'M' }
+    case 'css': return { color: '#563d7c', label: '#' }
+    case 'html': return { color: '#e34c26', label: '<>' }
+    default: return { color: '#858585', label: '~' }
   }
+}
+
+function findFile(nodes: FileNode[], id: string): FileNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children) {
+      const f = findFile(n.children, id)
+      if (f) return f
+    }
+  }
+  return null
+}
+
+export function TabBar() {
+  const tabs = useEditorStore(s => s.tabs)
+  const files = useEditorStore(s => s.files)
+  const activeFileId = useEditorStore(s => s.activeFileId)
+  const setActiveTab = useEditorStore(s => s.setActiveTab)
+  const closeTab = useEditorStore(s => s.closeTab)
+
+  if (tabs.length === 0) return <div className="h-[35px] bg-[#252526] border-b border-[#3e3e42]" />
 
   return (
-    <div className="h-9 bg-editor-sidebar border-b border-editor-border flex overflow-x-auto">
-      {validTabs.map((tab, index) => {
-        // Skip invalid tabs
-        if (!tab || typeof tab !== 'object') {
-          console.warn('TabBar: Invalid tab object', tab);
-          return null;
-        }
-        
-        const isActive = tab.id === activeTabId;
-        const tabName = tab.name || 'Untitled';
-        
+    <div className="h-[35px] bg-[#252526] flex items-end overflow-x-auto border-b border-[#3e3e42] shrink-0">
+      {tabs.map(tab => {
+        const file = findFile(files, tab.fileId)
+        if (!file) return null
+        const isActive = activeFileId === tab.fileId
+        const icon = getTabIcon(file.name)
+
         return (
           <div
-            key={tab.id || `tab-${index}`}
-            draggable={!!tab.id}
-            onDragStart={() => handleDragStart(index)}
-            onDragEnter={() => handleDragEnter(index)}
-            onDragEnd={handleDragEnd}
-            onDragOver={(e) => e.preventDefault()}
-            onClick={() => tab.id && setActiveTab(tab.id)}
-            className={`flex items-center min-w-fit px-3 py-2 cursor-pointer border-r border-editor-border select-none group ${
+            key={tab.id}
+            onClick={() => setActiveTab(tab.fileId)}
+            className={`group flex items-center gap-1.5 h-[35px] px-3 cursor-pointer text-[13px] border-r border-[#252526] shrink-0 ${
               isActive
-                ? 'bg-editor-bg text-editor-fg'
-                : 'bg-editor-sidebar text-gray-400 hover:bg-editor-hover'
+                ? 'bg-[#1e1e1e] text-white border-t border-t-[#007acc]'
+                : 'bg-[#2d2d30] text-[#969696] hover:bg-[#2d2d30] border-t border-t-transparent'
             }`}
           >
-            {getFileIcon(tabName)}
-            <span className={`ml-2 text-xs ${tab.isDirty ? 'italic' : ''}`}>
-              {tabName}
-              {tab.isDirty && <span className="ml-1">•</span>}
+            <span className="text-[9px] font-bold" style={{ color: icon.color }}>
+              {icon.label}
             </span>
+            <span className="truncate max-w-[120px]">{file.name}</span>
+            {file.isModified && (
+              <span className="w-2 h-2 rounded-full bg-white/60 shrink-0" />
+            )}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (tab.id) {
-                  closeTab(tab.id);
-                }
-              }}
-              className="ml-2 p-0.5 hover:bg-editor-active rounded opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={e => { e.stopPropagation(); closeTab(tab.fileId) }}
+              className={`p-0.5 rounded shrink-0 ${
+                isActive
+                  ? 'hover:bg-[#3c3c3c] text-[#cccccc]'
+                  : 'opacity-0 group-hover:opacity-100 hover:bg-[#3c3c3c] text-[#969696]'
+              }`}
             >
-              <X size={12} />
+              <X size={14} />
             </button>
           </div>
-        );
+        )
       })}
     </div>
-  );
-};
+  )
+}

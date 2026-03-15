@@ -1,47 +1,54 @@
-import { 
-  GitBranch, 
-  XCircle, 
-  AlertTriangle, 
-  Check, 
-  Bell,
-  Zap
-} from 'lucide-react'
+import { GitBranch, AlertTriangle, XCircle, Bell, Check } from 'lucide-react'
+import { useEditorStore, FileNode } from '../store/editorStore'
+
+function findFile(nodes: FileNode[], id: string): FileNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n
+    if (n.children) {
+      const f = findFile(n.children, id)
+      if (f) return f
+    }
+  }
+  return null
+}
 
 export function StatusBar() {
+  const activeFileId = useEditorStore(s => s.activeFileId)
+  const files = useEditorStore(s => s.files)
+  const file = activeFileId ? findFile(files, activeFileId) : null
+
   return (
-    <div className="h-6 bg-[#007acc] text-white flex items-center justify-between px-3 text-xs shrink-0">
-        {/* Left Section */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
-            <GitBranch className="w-3.5 h-3.5" />
-            <span>main*</span>
-          </div>
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
-            <XCircle className="w-3.5 h-3.5" />
-            <span>0</span>
-            <AlertTriangle className="w-3.5 h-3.5 ml-2" />
-            <span>0</span>
-          </div>
+    <div className="h-[22px] bg-[#007acc] text-white flex items-center justify-between px-2 text-[11px] shrink-0 select-none">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 hover:bg-white/10 px-1.5 rounded cursor-pointer">
+          <GitBranch size={12} />
+          <span>main</span>
         </div>
-
-        {/* Center Section */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
-            <Check className="w-3.5 h-3.5" />
-            <span>Prettier</span>
-          </div>
-        </div>
-
-        {/* Right Section */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
-            <Zap className="w-3.5 h-3.5" />
-            <span>Cursor Tab</span>
-          </div>
-          <div className="flex items-center gap-1.5 hover:bg-white/10 px-2 py-0.5 rounded cursor-pointer">
-            <Bell className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex items-center gap-1 hover:bg-white/10 px-1.5 rounded cursor-pointer">
+          <XCircle size={12} />
+          <span>0</span>
+          <AlertTriangle size={12} className="ml-1" />
+          <span>0</span>
         </div>
       </div>
+
+      <div className="flex items-center gap-3">
+        {file && (
+          <>
+            <span className="hover:bg-white/10 px-1.5 rounded cursor-pointer">
+              {file.language || 'Plain Text'}
+            </span>
+            <span className="hover:bg-white/10 px-1.5 rounded cursor-pointer">UTF-8</span>
+          </>
+        )}
+        <div className="flex items-center gap-1 hover:bg-white/10 px-1.5 rounded cursor-pointer">
+          <Check size={12} />
+          <span>Prettier</span>
+        </div>
+        <div className="hover:bg-white/10 px-1.5 rounded cursor-pointer">
+          <Bell size={12} />
+        </div>
+      </div>
+    </div>
   )
 }

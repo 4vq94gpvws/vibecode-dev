@@ -1,313 +1,156 @@
-import React, { useState } from 'react';
-import { useEditor } from '../hooks/useEditor';
-import { FileNode } from '../types';
-import { FileCode, Folder, FolderOpen, ChevronRight, ChevronDown, Plus, FilePlus, FolderPlus } from 'lucide-react';
+import { useState } from 'react'
+import { useEditorStore, FileNode } from '../store/editorStore'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 
-interface FileTreeItemProps {
-  node: FileNode;
-  level: number;
+function getFileIcon(name: string): { color: string; label: string } {
+  const ext = name.split('.').pop()?.toLowerCase() || ''
+  switch (ext) {
+    case 'ts': case 'tsx': return { color: '#3178c6', label: 'TS' }
+    case 'js': case 'jsx': return { color: '#f1e05a', label: 'JS' }
+    case 'json': return { color: '#cb8622', label: '{}' }
+    case 'md': return { color: '#519aba', label: 'M' }
+    case 'css': return { color: '#563d7c', label: '#' }
+    case 'html': return { color: '#e34c26', label: '<>' }
+    case 'py': return { color: '#3572A5', label: 'PY' }
+    default: return { color: '#858585', label: '~' }
+  }
 }
 
-const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
-  const { openFile, toggleDirectory, createFile, createDirectory } = useEditor();
-  const [isHovered, setIsHovered] = useState(false);
-  const [showNewFileInput, setShowNewFileInput] = useState(false);
-  const [showNewFolderInput, setShowNewFolderInput] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [error, setError] = useState<string | null>(null);
+function FileTreeItem({ node, depth }: { node: FileNode; depth: number }) {
+  const openTab = useEditorStore(s => s.openTab)
+  const toggleFolder = useEditorStore(s => s.toggleFolder)
+  const activeFileId = useEditorStore(s => s.activeFileId)
 
-  // Validate node before rendering
-  if (!node || typeof node !== 'object') {
-    console.error('FileTreeItem: Invalid node prop', node);
-    return null;
-  }
+  const isActive = node.type === 'file' && activeFileId === node.id
+  const children = node.children || []
 
   const handleClick = () => {
-    try {
-      setError(null);
-      
-      if (!node) {
-        console.error('FileTreeItem: Node is null');
-        return;
-      }
-      
-      if (node.type === 'directory') {
-        if (node.id) {
-          toggleDirectory(node.id);
-        } else {
-          console.error('FileTreeItem: Directory node missing id', node);
-        }
-      } else if (node.type === 'file') {
-        // Validate file node before opening
-        if (!node.id) {
-          console.error('FileTreeItem: File node missing id', node);
-          setError('Cannot open file: missing ID');
-          return;
-        }
-        if (!node.name) {
-          console.error('FileTreeItem: File node missing name', node);
-          setError('Cannot open file: missing name');
-          return;
-        }
-        openFile(node);
-      }
-    } catch (err) {
-      console.error('FileTreeItem: Error handling click:', err);
-      setError('An error occurred while opening the file');
-    }
-  };
-
-  const handleCreateFile = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newItemName.trim()) {
-      try {
-        createFile(newItemName.trim(), node.id);
-        setNewItemName('');
-        setShowNewFileInput(false);
-      } catch (err) {
-        console.error('FileTreeItem: Error creating file:', err);
-        setError('Failed to create file');
-      }
-    }
-    if (e.key === 'Escape') {
-      setNewItemName('');
-      setShowNewFileInput(false);
-    }
-  };
-
-  const handleCreateFolder = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newItemName.trim()) {
-      try {
-        createDirectory(newItemName.trim(), node.id);
-        setNewItemName('');
-        setShowNewFolderInput(false);
-      } catch (err) {
-        console.error('FileTreeItem: Error creating folder:', err);
-        setError('Failed to create folder');
-      }
-    }
-    if (e.key === 'Escape') {
-      setNewItemName('');
-      setShowNewFolderInput(false);
-    }
-  };
-
-  const getFileIcon = () => {
     if (node.type === 'directory') {
-      return node.isOpen ? <FolderOpen size={16} className="text-blue-400" /> : <Folder size={16} className="text-blue-400" />;
+      toggleFolder(node.id)
+    } else {
+      openTab(node.id)
     }
-    const ext = node.name?.split('.').pop()?.toLowerCase();
-    const colorClass = {
-      ts: 'text-blue-400',
-      tsx: 'text-blue-400',
-      js: 'text-yellow-400',
-      jsx: 'text-yellow-400',
-      json: 'text-green-400',
-      md: 'text-gray-400',
-      css: 'text-cyan-400',
-      html: 'text-orange-400'
-    }[ext || ''] || 'text-gray-400';
-    return <FileCode size={16} className={colorClass} />;
-  };
+  }
 
-  // Safely get children array
-  const children = node.children || [];
+  const icon = node.type === 'file' ? getFileIcon(node.name) : null
 
   return (
-    <div>
-      {error && (
-        <div className="px-2 py-1 text-xs text-red-400 bg-red-900/20">
-          {error}
-        </div>
-      )}
+    <>
       <div
-        className={`flex items-center py-1 px-2 cursor-pointer hover:bg-editor-hover transition-colors ${
-          level > 0 ? 'ml-4' : ''
-        }`}
-        style={{ paddingLeft: `${level * 12 + 8}px` }}
         onClick={handleClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        className={`flex items-center h-[22px] cursor-pointer text-[13px] pr-2 ${
+          isActive
+            ? 'bg-[#37373d] text-white'
+            : 'text-[#cccccc] hover:bg-[#2a2d2e]'
+        }`}
+        style={{ paddingLeft: depth * 8 + 8 }}
       >
-        <span className="mr-1">
-          {node.type === 'directory' && (
-            node.isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />
-          )}
-        </span>
-        <span className="mr-2">{getFileIcon()}</span>
-        <span className="text-sm text-editor-fg truncate">{node.name || 'Unnamed'}</span>
-        
-        {isHovered && node.type === 'directory' && (
-          <div className="ml-auto flex gap-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowNewFileInput(true);
-              }}
-              className="p-1 hover:bg-editor-active rounded"
-              title="New File"
+        {node.type === 'directory' ? (
+          <>
+            {node.isOpen ? (
+              <ChevronDown size={16} className="shrink-0 text-[#858585] mr-0.5" />
+            ) : (
+              <ChevronRight size={16} className="shrink-0 text-[#858585] mr-0.5" />
+            )}
+            <span className="truncate">{node.name}</span>
+          </>
+        ) : (
+          <>
+            <span
+              className="w-4 h-4 text-[9px] font-bold flex items-center justify-center shrink-0 mr-1.5 ml-5 rounded-sm"
+              style={{ color: icon?.color }}
             >
-              <FilePlus size={12} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowNewFolderInput(true);
-              }}
-              className="p-1 hover:bg-editor-active rounded"
-              title="New Folder"
-            >
-              <FolderPlus size={12} />
-            </button>
-          </div>
+              {icon?.label}
+            </span>
+            <span className="truncate">{node.name}</span>
+            {node.isModified && (
+              <span className="ml-auto text-[#c8c8c8] text-[10px] shrink-0">M</span>
+            )}
+          </>
         )}
       </div>
-      
-      {showNewFileInput && (
-        <div
-          className="flex items-center py-1 px-2 ml-4"
-          style={{ paddingLeft: `${(level + 1) * 12 + 8}px` }}
-        >
-          <FileCode size={16} className="mr-2 text-gray-400" />
-          <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyDown={handleCreateFile}
-            onBlur={() => setShowNewFileInput(false)}
-            autoFocus
-            className="bg-editor-active text-editor-fg text-sm px-2 py-0.5 rounded outline-none border border-editor-border"
-            placeholder="filename..."
-          />
-        </div>
-      )}
-      
-      {showNewFolderInput && (
-        <div
-          className="flex items-center py-1 px-2 ml-4"
-          style={{ paddingLeft: `${(level + 1) * 12 + 8}px` }}
-        >
-          <Folder size={16} className="mr-2 text-blue-400" />
-          <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyDown={handleCreateFolder}
-            onBlur={() => setShowNewFolderInput(false)}
-            autoFocus
-            className="bg-editor-active text-editor-fg text-sm px-2 py-0.5 rounded outline-none border border-editor-border"
-            placeholder="foldername..."
-          />
-        </div>
-      )}
-      
-      {/* Safely render children with null check */}
       {node.type === 'directory' && node.isOpen && children.length > 0 && (
         <div>
           {children.map(child => (
-            child ? <FileTreeItem key={child.id || Math.random()} node={child} level={level + 1} /> : null
+            <FileTreeItem key={child.id} node={child} depth={depth + 1} />
           ))}
         </div>
       )}
-    </div>
-  );
-};
+    </>
+  )
+}
 
-export const FileExplorer: React.FC = () => {
-  const { files, createFile, createDirectory } = useEditor();
-  const [showNewFileInput, setShowNewFileInput] = useState(false);
-  const [showNewFolderInput, setShowNewFolderInput] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
+export function FileExplorer() {
+  const files = useEditorStore(s => s.files)
+  const [newFileName, setNewFileName] = useState('')
+  const [isCreating, setIsCreating] = useState<'file' | 'folder' | null>(null)
+  const addFile = useEditorStore(s => s.addFile)
 
-  const handleCreateFile = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newItemName.trim()) {
-      createFile(newItemName.trim());
-      setNewItemName('');
-      setShowNewFileInput(false);
+  const handleCreate = () => {
+    if (!newFileName.trim()) {
+      setIsCreating(null)
+      return
     }
-    if (e.key === 'Escape') {
-      setNewItemName('');
-      setShowNewFileInput(false);
-    }
-  };
+    const isFolder = isCreating === 'folder'
+    addFile(
+      {
+        id: `${Date.now()}-${newFileName}`,
+        name: newFileName.trim(),
+        type: isFolder ? 'directory' : 'file',
+        ...(isFolder ? { children: [], isOpen: true } : { content: '', language: 'text' }),
+      },
+      'root'
+    )
+    setNewFileName('')
+    setIsCreating(null)
+  }
 
-  const handleCreateFolder = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newItemName.trim()) {
-      createDirectory(newItemName.trim());
-      setNewItemName('');
-      setShowNewFolderInput(false);
-    }
-    if (e.key === 'Escape') {
-      setNewItemName('');
-      setShowNewFolderInput(false);
-    }
-  };
-
-  // Filter out invalid files with null safety
-  const validFiles = (files || []).filter(node => node && typeof node === 'object');
+  const rootChildren = files[0]?.children || []
 
   return (
-    <div className="h-full flex flex-col bg-editor-sidebar border-r border-editor-border">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-editor-border">
-        <span className="text-sm font-semibold text-editor-fg">Explorer</span>
+    <div className="w-60 bg-[#252526] flex flex-col flex-shrink-0 select-none overflow-hidden border-r border-[#3e3e42]">
+      <div className="h-9 flex items-center justify-between px-4 text-[11px] font-semibold uppercase tracking-wider text-[#bbbbbb] shrink-0">
+        <span>Explorer</span>
         <div className="flex gap-1">
           <button
-            onClick={() => setShowNewFileInput(true)}
-            className="p-1 hover:bg-editor-active rounded"
+            onClick={() => setIsCreating('file')}
+            className="p-0.5 hover:bg-[#3c3c3c] rounded text-[#cccccc]"
             title="New File"
           >
-            <FilePlus size={16} />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1l3.4 3.5.1.4v2h-1V6H8V2H3v11h4v1H2.5l-.5-.5v-12l.5-.5h6.7l.3.1zM9 2v3h2.9L9 2zm4 14h-1v-3H9v-1h3V9h1v3h3v1h-3v3z"/></svg>
           </button>
           <button
-            onClick={() => setShowNewFolderInput(true)}
-            className="p-1 hover:bg-editor-active rounded"
+            onClick={() => setIsCreating('folder')}
+            className="p-0.5 hover:bg-[#3c3c3c] rounded text-[#cccccc]"
             title="New Folder"
           >
-            <FolderPlus size={16} />
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14.5 3H7.71l-.85-.85L6.51 2h-5l-.5.5v11l.5.5h13l.5-.5v-10L14.5 3zm-.51 8.49V13H2V3h4.29l.85.85.36.15H14v7.49z"/></svg>
           </button>
         </div>
       </div>
-      
-      {showNewFileInput && (
-        <div className="px-4 py-2">
+
+      {isCreating && (
+        <div className="px-2 py-1">
           <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyDown={handleCreateFile}
-            onBlur={() => setShowNewFileInput(false)}
             autoFocus
-            className="w-full bg-editor-active text-editor-fg text-sm px-2 py-1 rounded outline-none border border-editor-border"
-            placeholder="New file name..."
+            value={newFileName}
+            onChange={e => setNewFileName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleCreate()
+              if (e.key === 'Escape') { setIsCreating(null); setNewFileName('') }
+            }}
+            onBlur={handleCreate}
+            placeholder={isCreating === 'file' ? 'filename.ts' : 'folder name'}
+            className="w-full bg-[#3c3c3c] text-[#cccccc] text-xs px-2 py-1 rounded outline-none border border-[#007acc]"
           />
         </div>
       )}
-      
-      {showNewFolderInput && (
-        <div className="px-4 py-2">
-          <input
-            type="text"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-            onKeyDown={handleCreateFolder}
-            onBlur={() => setShowNewFolderInput(false)}
-            autoFocus
-            className="w-full bg-editor-active text-editor-fg text-sm px-2 py-1 rounded outline-none border border-editor-border"
-            placeholder="New folder name..."
-          />
-        </div>
-      )}
-      
-      <div className="flex-1 overflow-y-auto py-2">
-        {validFiles.length === 0 ? (
-          <div className="px-4 py-2 text-sm text-gray-500">
-            No files found
-          </div>
-        ) : (
-          validFiles.map(node => (
-            node ? <FileTreeItem key={node.id || Math.random()} node={node} level={0} /> : null
-          ))
-        )}
+
+      <div className="flex-1 overflow-y-auto py-0.5">
+        {rootChildren.map(node => (
+          <FileTreeItem key={node.id} node={node} depth={0} />
+        ))}
       </div>
     </div>
-  );
-};
+  )
+}

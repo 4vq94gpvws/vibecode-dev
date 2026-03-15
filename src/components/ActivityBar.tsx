@@ -1,61 +1,61 @@
-import { Files, Search, GitBranch, Bug, Puzzle, Settings, MessageSquare } from 'lucide-react'
+import { Files, Search, GitBranch, MessageSquare, Settings } from 'lucide-react'
+import { useEditorStore } from '../store/editorStore'
 
-interface ActivityBarProps {
-  activePanel: string
-  isChatOpen: boolean
-  onSelect: (panel: string) => void
+type ViewType = 'explorer' | 'search' | 'git'
+
+const topItems: { id: ViewType; icon: typeof Files; label: string }[] = [
+  { id: 'explorer', icon: Files, label: 'Explorer' },
+  { id: 'search', icon: Search, label: 'Search' },
+  { id: 'git', icon: GitBranch, label: 'Source Control' },
+]
+
+interface Props {
+  chatOpen: boolean
+  onToggleChat: () => void
 }
 
-export function ActivityBar({ activePanel, isChatOpen, onSelect }: ActivityBarProps) {
-  const topItems = [
-    { id: 'files', icon: Files, label: 'Explorer' },
-    { id: 'search', icon: Search, label: 'Search' },
-    { id: 'git', icon: GitBranch, label: 'Source Control' },
-    { id: 'debug', icon: Bug, label: 'Run and Debug' },
-    { id: 'extensions', icon: Puzzle, label: 'Extensions' },
-  ]
+export function ActivityBar({ chatOpen, onToggleChat }: Props) {
+  const activeView = useEditorStore(s => s.activeView)
+  const setActiveView = useEditorStore(s => s.setActiveView)
 
   return (
-    <div className="w-12 bg-[#333333] flex flex-col items-center py-1 flex-shrink-0 border-r border-[#252526]">
-      <div className="flex flex-col items-center gap-0.5 flex-1">
+    <div className="w-12 bg-[#333333] flex flex-col items-center pt-0.5 flex-shrink-0 select-none">
+      <div className="flex flex-col items-center flex-1">
         {topItems.map(({ id, icon: Icon, label }) => (
           <button
             key={id}
             title={label}
-            onClick={() => onSelect(id)}
-            className={`w-10 h-10 flex items-center justify-center transition-colors relative ${
-              activePanel === id
-                ? 'text-white'
-                : 'text-[#858585] hover:text-white'
+            onClick={() => setActiveView(id)}
+            className={`w-12 h-12 flex items-center justify-center relative transition-colors ${
+              activeView === id ? 'text-white' : 'text-[#858585] hover:text-white'
             }`}
           >
-            <Icon size={22} />
-            {activePanel === id && (
-              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-r" />
+            <Icon size={24} strokeWidth={1.5} />
+            {activeView === id && (
+              <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-white rounded-r" />
             )}
           </button>
         ))}
       </div>
-      <div className="flex flex-col items-center gap-0.5 pb-1">
+
+      <div className="flex flex-col items-center pb-1">
         <button
           title="AI Chat (Ctrl+L)"
-          onClick={() => onSelect('chat')}
-          className={`w-10 h-10 flex items-center justify-center transition-colors relative ${
-            isChatOpen
-              ? 'text-white'
-              : 'text-[#858585] hover:text-white'
+          onClick={onToggleChat}
+          className={`w-12 h-12 flex items-center justify-center relative transition-colors ${
+            chatOpen ? 'text-white' : 'text-[#858585] hover:text-white'
           }`}
         >
-          <MessageSquare size={22} />
-          {isChatOpen && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-white rounded-r" />
+          <MessageSquare size={24} strokeWidth={1.5} />
+          {chatOpen && (
+            <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-white rounded-r" />
           )}
         </button>
         <button
           title="Settings"
-          className="w-10 h-10 flex items-center justify-center text-[#858585] hover:text-white transition-colors"
+          className="w-12 h-12 flex items-center justify-center text-[#858585] hover:text-white transition-colors"
         >
-          <Settings size={22} />
+          <Settings size={24} strokeWidth={1.5} />
         </button>
       </div>
     </div>

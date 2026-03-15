@@ -14,20 +14,59 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
   const [showNewFileInput, setShowNewFileInput] = useState(false);
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newItemName, setNewItemName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Validate node before rendering
+  if (!node || typeof node !== 'object') {
+    console.error('FileTreeItem: Invalid node prop', node);
+    return null;
+  }
 
   const handleClick = () => {
-    if (node.type === 'directory') {
-      toggleDirectory(node.id);
-    } else {
-      openFile(node);
+    try {
+      setError(null);
+      
+      if (!node) {
+        console.error('FileTreeItem: Node is null');
+        return;
+      }
+      
+      if (node.type === 'directory') {
+        if (node.id) {
+          toggleDirectory(node.id);
+        } else {
+          console.error('FileTreeItem: Directory node missing id', node);
+        }
+      } else if (node.type === 'file') {
+        // Validate file node before opening
+        if (!node.id) {
+          console.error('FileTreeItem: File node missing id', node);
+          setError('Cannot open file: missing ID');
+          return;
+        }
+        if (!node.name) {
+          console.error('FileTreeItem: File node missing name', node);
+          setError('Cannot open file: missing name');
+          return;
+        }
+        openFile(node);
+      }
+    } catch (err) {
+      console.error('FileTreeItem: Error handling click:', err);
+      setError('An error occurred while opening the file');
     }
   };
 
   const handleCreateFile = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newItemName.trim()) {
-      createFile(newItemName.trim(), node.id);
-      setNewItemName('');
-      setShowNewFileInput(false);
+      try {
+        createFile(newItemName.trim(), node.id);
+        setNewItemName('');
+        setShowNewFileInput(false);
+      } catch (err) {
+        console.error('FileTreeItem: Error creating file:', err);
+        setError('Failed to create file');
+      }
     }
     if (e.key === 'Escape') {
       setNewItemName('');
@@ -37,9 +76,14 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
 
   const handleCreateFolder = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newItemName.trim()) {
-      createDirectory(newItemName.trim(), node.id);
-      setNewItemName('');
-      setShowNewFolderInput(false);
+      try {
+        createDirectory(newItemName.trim(), node.id);
+        setNewItemName('');
+        setShowNewFolderInput(false);
+      } catch (err) {
+        console.error('FileTreeItem: Error creating folder:', err);
+        setError('Failed to create folder');
+      }
     }
     if (e.key === 'Escape') {
       setNewItemName('');
@@ -51,7 +95,7 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
     if (node.type === 'directory') {
       return node.isOpen ? <FolderOpen size={16} className="text-blue-400" /> : <Folder size={16} className="text-blue-400" />;
     }
-    const ext = node.name.split('.').pop()?.toLowerCase();
+    const ext = node.name?.split('.').pop()?.toLowerCase();
     const colorClass = {
       ts: 'text-blue-400',
       tsx: 'text-blue-400',
@@ -67,6 +111,11 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
 
   return (
     <div>
+      {error && (
+        <div className="px-2 py-1 text-xs text-red-400 bg-red-900/20">
+          {error}
+        </div>
+      )}
       <div
         className={`flex items-center py-1 px-2 cursor-pointer hover:bg-editor-hover transition-colors ${
           level > 0 ? 'ml-4' : ''
@@ -82,7 +131,7 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
           )}
         </span>
         <span className="mr-2">{getFileIcon()}</span>
-        <span className="text-sm text-editor-fg truncate">{node.name}</span>
+        <span className="text-sm text-editor-fg truncate">{node.name || 'Unnamed'}</span>
         
         {isHovered && node.type === 'directory' && (
           <div className="ml-auto flex gap-1">
@@ -148,10 +197,10 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ node, level }) => {
         </div>
       )}
       
-      {node.type === 'directory' && node.isOpen && node.children && (
+      {node.type === 'directory' && node.isOpen && node.children && Array.isArray(node.children) && (
         <div>
           {node.children.map(child => (
-            <FileTreeItem key={child.id} node={child} level={level + 1} />
+            child ? <FileTreeItem key={child.id || Math.random()} node={child} level={level + 1} /> : null
           ))}
         </div>
       )}
@@ -164,10 +213,20 @@ export const FileExplorer: React.FC = () => {
   const [showNewFileInput, setShowNewFileInput] = useState(false);
   const [showNewFolderInput, setShowNewFolderInput] = useState(false);
   const [newItemName, setNewItemName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreateFile = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newItemName.trim()) {
-      createFile(newItemName.trim());
+      try {
+        createFile(newItemName.trim());
+        setNewItemName('');
+        setShowNewFileInput(false);
+      } catch (err) {
+        console.error('FileExplorer: Error creating file:', err);
+        setError('Failed to create file');
+      }
+    }
+    if (e.key === 'Escape') {
       setNewItemName('');
       setShowNewFileInput(false);
     }
@@ -175,11 +234,19 @@ export const FileExplorer: React.FC = () => {
 
   const handleCreateFolder = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && newItemName.trim()) {
-      createDirectory(newItemName.trim());
-      setNewItemName('');
-      setShowNewFolderInput(false);
+      try {
+        createDirectory(newItemName.trim());
+        setNewItemName('');
+        setShowNewFolderInput(false);
+      } catch (err) {
+        console.error('FileExplorer: Error creating folder:', err);
+        setError('Failed to create folder');
+      }
     }
   };
+
+  // Validate files array
+  const validFiles = Array.isArray(files) ? files : [];
 
   return (
     <div className="w-64 bg-editor-sidebar border-r border-editor-border flex flex-col">
@@ -191,17 +258,23 @@ export const FileExplorer: React.FC = () => {
             className="p-1 hover:bg-editor-active rounded"
             title="New File"
           >
-            <FilePlus size={14} />
+            <FilePlus size={16} />
           </button>
           <button
             onClick={() => setShowNewFolderInput(true)}
             className="p-1 hover:bg-editor-active rounded"
             title="New Folder"
           >
-            <FolderPlus size={14} />
+            <FolderPlus size={16} />
           </button>
         </div>
       </div>
+      
+      {error && (
+        <div className="px-4 py-2 text-xs text-red-400 bg-red-900/20 border-b border-red-900/50">
+          {error}
+        </div>
+      )}
       
       {showNewFileInput && (
         <div className="px-4 py-2">
@@ -234,9 +307,15 @@ export const FileExplorer: React.FC = () => {
       )}
       
       <div className="flex-1 overflow-y-auto py-2">
-        {files.map(node => (
-          <FileTreeItem key={node.id} node={node} level={0} />
-        ))}
+        {validFiles.length === 0 ? (
+          <div className="px-4 py-2 text-sm text-gray-500">
+            No files found
+          </div>
+        ) : (
+          validFiles.map(node => (
+            node ? <FileTreeItem key={node.id || Math.random()} node={node} level={0} /> : null
+          ))
+        )}
       </div>
     </div>
   );

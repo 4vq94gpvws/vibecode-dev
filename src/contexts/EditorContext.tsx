@@ -120,6 +120,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   const findFileById = (files: FileNode[], id: string): FileNode | null => {
+    if (!files || !Array.isArray(files)) return null;
     for (const file of files) {
       if (file.id === id) return file;
       if (file.children) {
@@ -131,6 +132,7 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const updateFileInTree = (files: FileNode[], fileId: string, updates: Partial<FileNode>): FileNode[] => {
+    if (!files || !Array.isArray(files)) return [];
     return files.map(file => {
       if (file.id === fileId) {
         return { ...file, ...updates };
@@ -143,7 +145,22 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const openFile = useCallback((file: FileNode) => {
-    if (file.type !== 'file') return;
+    // Validate file parameter
+    if (!file || typeof file !== 'object') {
+      console.error('openFile: Invalid file parameter');
+      return;
+    }
+    
+    if (file.type !== 'file') {
+      console.log('openFile: Not a file, skipping');
+      return;
+    }
+    
+    // Ensure file has required properties
+    if (!file.id || !file.name) {
+      console.error('openFile: File missing required properties (id or name)', file);
+      return;
+    }
     
     const existingTab = tabs.find(t => t.fileId === file.id);
     if (existingTab) {
@@ -163,6 +180,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [tabs]);
 
   const closeTab = useCallback((tabId: string) => {
+    if (!tabId) {
+      console.error('closeTab: Invalid tabId');
+      return;
+    }
+    
     setTabs(prev => {
       const index = prev.findIndex(t => t.id === tabId);
       const newTabs = prev.filter(t => t.id !== tabId);
@@ -177,6 +199,11 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [activeTabId]);
 
   const updateFileContent = useCallback((fileId: string, content: string) => {
+    if (!fileId) {
+      console.error('updateFileContent: Invalid fileId');
+      return;
+    }
+    
     setFiles(prev => updateFileInTree(prev, fileId, { content }));
     const tab = tabs.find(t => t.fileId === fileId);
     if (tab && !tab.isDirty) {
@@ -187,12 +214,24 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [tabs]);
 
   const setActiveTab = useCallback((tabId: string) => {
+    if (!tabId) {
+      console.error('setActiveTab: Invalid tabId');
+      return;
+    }
     setActiveTabId(tabId);
   }, []);
 
   const reorderTabs = useCallback((dragIndex: number, hoverIndex: number) => {
+    if (dragIndex < 0 || hoverIndex < 0) {
+      console.error('reorderTabs: Invalid indices');
+      return;
+    }
+    
     setTabs(prev => {
       const newTabs = [...prev];
+      if (dragIndex >= newTabs.length || hoverIndex >= newTabs.length) {
+        return prev;
+      }
       const [draggedTab] = newTabs.splice(dragIndex, 1);
       newTabs.splice(hoverIndex, 0, draggedTab);
       return newTabs;
@@ -200,21 +239,36 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const updateCursorPosition = useCallback((tabId: string, position: { lineNumber: number; column: number }) => {
+    if (!tabId || !position) {
+      console.error('updateCursorPosition: Invalid parameters');
+      return;
+    }
+    
     setTabs(prev => prev.map(t => 
       t.id === tabId ? { ...t, cursorPosition: position } : t
     ));
   }, []);
 
   const markTabDirty = useCallback((tabId: string, isDirty: boolean) => {
+    if (!tabId) {
+      console.error('markTabDirty: Invalid tabId');
+      return;
+    }
+    
     setTabs(prev => prev.map(t => 
       t.id === tabId ? { ...t, isDirty } : t
     ));
   }, []);
 
   const createFile = useCallback((name: string, parentId: string | null = 'root') => {
+    if (!name || typeof name !== 'string') {
+      console.error('createFile: Invalid name');
+      return;
+    }
+    
     const newFile: FileNode = {
       id: uuidv4(),
-      name,
+      name: name.trim(),
       type: 'file',
       parentId,
       content: '',
@@ -222,6 +276,10 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     
     setFiles(prev => {
+      if (!prev || !Array.isArray(prev)) {
+        return [newFile];
+      }
+      
       if (parentId === null || parentId === 'root') {
         const root = prev[0];
         if (root) {
@@ -233,21 +291,28 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         children: [...(findFileById(prev, parentId)?.children || []), newFile]
       });
     });
-    
-    openFile(newFile);
-  }, [openFile]);
+  }, []);
 
   const createDirectory = useCallback((name: string, parentId: string | null = 'root') => {
+    if (!name || typeof name !== 'string') {
+      console.error('createDirectory: Invalid name');
+      return;
+    }
+    
     const newDir: FileNode = {
       id: uuidv4(),
-      name,
+      name: name.trim(),
       type: 'directory',
-      parentId,
       isOpen: true,
+      parentId,
       children: []
     };
     
     setFiles(prev => {
+      if (!prev || !Array.isArray(prev)) {
+        return [newDir];
+      }
+      
       if (parentId === null || parentId === 'root') {
         const root = prev[0];
         if (root) {
@@ -262,9 +327,18 @@ export const EditorProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const toggleDirectory = useCallback((dirId: string) => {
-    setFiles(prev => updateFileInTree(prev, dirId, {
-      isOpen: !findFileById(prev, dirId)?.isOpen
-    }));
+    if (!dirId) {
+      console.error('toggleDirectory: Invalid dirId');
+      return;
+    }
+    
+    setFiles(prev => {
+      if (!prev || !Array.isArray(prev)) return prev;
+      const dir = findFileById(prev, dirId);
+      return updateFileInTree(prev, dirId, {
+        isOpen: !dir?.isOpen
+      });
+    });
   }, []);
 
   return (

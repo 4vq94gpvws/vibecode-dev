@@ -2,14 +2,12 @@ import React, { useRef, useEffect, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useEditor } from '../hooks/useEditor';
 import { useAgents } from '../hooks/useAgents';
-import { useAgentContext } from '../contexts/AgentContext';
 import { CodeSuggestion } from '../types/agents';
 import { Check, X, Sparkles } from 'lucide-react';
 
 export const CodeEditor: React.FC = () => {
   const { activeFile, activeTab, updateFileContent, updateCursorPosition, getAIContext } = useEditor();
-  const { suggestions, applySuggestion, dismissSuggestion } = useAgentContext();
-  const { requestCompletion } = useAgents();
+  const { suggestions, applySuggestion, dismissSuggestion, requestCompletion } = useAgents();
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const [decorations, setDecorations] = useState<string[]>([]);

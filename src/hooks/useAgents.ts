@@ -1,20 +1,20 @@
 import { useCallback } from 'react';
-import { AgentType, AIContext } from '../types';
+import { AIContext } from '../types';
 import { useAgentContext } from '../contexts/AgentContext';
 
 export const useAgents = () => {
-  const {
-    messages,
-    activeAgents,
-    isProcessing,
-    currentStreamingMessage,
-    suggestions,
-    sendMessage,
-    clearMessages,
-    toggleAgent,
-    applySuggestion,
-    dismissSuggestion
-  } = useAgentContext();
+  const ctx = useAgentContext() as any;
+
+  const messages = ctx.messages || [];
+  const activeAgents = ctx.activeAgents || [];
+  const isProcessing = ctx.isProcessing || false;
+  const currentStreamingMessage = ctx.currentStreamingMessage || null;
+  const suggestions = ctx.suggestions || [];
+  const sendMessage = ctx.sendMessage || (async () => {});
+  const clearMessages = ctx.clearMessages || (() => {});
+  const toggleAgent = ctx.toggleAgent || (() => {});
+  const applySuggestion = ctx.applySuggestion || (() => {});
+  const dismissSuggestion = ctx.dismissSuggestion || (() => {});
 
   const requestCompletion = useCallback((context: AIContext) => {
     return sendMessage('completion', 'Complete this code', context);

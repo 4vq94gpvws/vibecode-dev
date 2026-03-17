@@ -61,18 +61,6 @@ const defaultFiles: FileNode[] = [
     parentId: null,
     children: [
       {
-      storage: {
-        getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
-        },
-        setItem: async (name: string, value: unknown) => {
-          await idbSet(name, value)
-        },
-        removeItem: async (name: string) => {
-          await idbDel(name)
-        },
-      },
         id: 'src',
         name: 'src',
         type: 'directory',
@@ -80,18 +68,6 @@ const defaultFiles: FileNode[] = [
         parentId: 'root',
         children: [
           {
-      storage: {
-        getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
-        },
-        setItem: async (name: string, value: unknown) => {
-          await idbSet(name, value)
-        },
-        removeItem: async (name: string) => {
-          await idbDel(name)
-        },
-      },
             id: 'main',
             name: 'main.js',
             type: 'file',
@@ -107,18 +83,6 @@ console.log(greet('Developer'));`,
             parentId: 'src',
           },
           {
-      storage: {
-        getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
-        },
-        setItem: async (name: string, value: unknown) => {
-          await idbSet(name, value)
-        },
-        removeItem: async (name: string) => {
-          await idbDel(name)
-        },
-      },
             id: 'utils',
             name: 'utils.js',
             type: 'file',
@@ -140,18 +104,6 @@ export const debounce = (fn, delay) => {
         ],
       },
       {
-      storage: {
-        getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
-        },
-        setItem: async (name: string, value: unknown) => {
-          await idbSet(name, value)
-        },
-        removeItem: async (name: string) => {
-          await idbDel(name)
-        },
-      },
         id: 'package',
         name: 'package.json',
         type: 'file',
@@ -172,18 +124,6 @@ export const debounce = (fn, delay) => {
         parentId: 'root',
       },
       {
-      storage: {
-        getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
-        },
-        setItem: async (name: string, value: unknown) => {
-          await idbSet(name, value)
-        },
-        removeItem: async (name: string) => {
-          await idbDel(name)
-        },
-      },
         id: 'readme',
         name: 'README.md',
         type: 'file',

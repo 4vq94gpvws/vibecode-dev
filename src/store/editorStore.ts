@@ -349,8 +349,18 @@ export const useEditorStore = create<EditorState>()(
     {
       storage: {
         getItem: async (name: string) => {
-          const value = await idbGet(name)
-          return value ?? null
+          // Migrate from localStorage to IndexedDB on first load
+          const idbValue = await idbGet(name)
+          if (idbValue != null) return idbValue
+          try {
+            const lsValue = localStorage.getItem(name)
+            if (lsValue != null) {
+              await idbSet(name, JSON.parse(lsValue))
+              localStorage.removeItem(name)
+              return JSON.parse(lsValue)
+            }
+          } catch (_) {}
+          return null
         },
         setItem: async (name: string, value: unknown) => {
           await idbSet(name, value)

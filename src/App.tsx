@@ -13,7 +13,8 @@ import { AuthPage } from './components/AuthPage'
 import { useEditorStore, FileNode } from './store/editorStore'
 import { useAuth } from './lib/useAuth'
 import { listProjects, loadProject, saveProject, deleteProject, type Project } from './lib/projects'
-import { Folder, Terminal as TerminalIcon, Loader2, Plus, Trash2, LogOut, Cloud, Clock } from 'lucide-react'
+import { Folder, Terminal as TerminalIcon, Loader2, Plus, Trash2, LogOut, Cloud, Clock, Github } from 'lucide-react'
+import { importFromGitHub } from './lib/github-import'
 
 const extToLang: Record<string, string> = {
   js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
@@ -35,6 +36,11 @@ function App() {
   const [loadingProjects, setLoadingProjects] = useState(false)
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [githubUrl, setGithubUrl] = useState('')
+  const [githubImporting, setGithubImporting] = useState(false)
+  const [githubProgress, setGithubProgress] = useState('')
+  const [githubError, setGithubError] = useState('')
+  const [showGithubInput, setShowGithubInput] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -158,6 +164,30 @@ function App() {
     setHasProject(true)
   }
 
+  const handleGitHubImport = async () => {
+    if (!githubUrl.trim()) return
+    setGithubImporting(true)
+    setGithubError('')
+    setGithubProgress('Connecting to GitHub...')
+    try {
+      const { name, root } = await importFromGitHub(githubUrl, setGithubProgress)
+      setFiles([root])
+      setProjectName(name)
+      if (user) {
+        const project = await saveProject(name, [root])
+        setProjectId(project.id)
+        setProjects(prev => [project, ...prev])
+      }
+      setHasProject(true)
+      setShowGithubInput(false)
+      setGithubUrl('')
+    } catch (e: any) {
+      setGithubError(e.message || 'Import failed')
+    }
+    setGithubImporting(false)
+    setGithubProgress('')
+  }
+
   const handleOpenProject = async (project: Project) => {
     setIsLoading(true)
     try {
@@ -256,7 +286,7 @@ function App() {
             </div>
 
             {/* Actions */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
@@ -266,6 +296,13 @@ function App() {
                 Open Folder
               </button>
               <button
+                onClick={() => setShowGithubInput(!showGithubInput)}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded-lg text-sm font-medium transition-colors border border-[#30363d]"
+              >
+                <Github size={16} />
+                GitHub
+              </button>
+              <button
                 onClick={handleDemo}
                 className="flex items-center justify-center gap-2 px-4 py-3 bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] rounded-lg text-sm font-medium transition-colors border border-[#30363d]"
               >
@@ -273,6 +310,36 @@ function App() {
                 New Project
               </button>
             </div>
+
+            {/* GitHub Import */}
+            {showGithubInput && (
+              <div className="mb-4 p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={githubUrl}
+                    onChange={(e) => { setGithubUrl(e.target.value); setGithubError('') }}
+                    onKeyDown={(e) => e.key === 'Enter' && !githubImporting && handleGitHubImport()}
+                    placeholder="https://github.com/owner/repo"
+                    className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-sm text-[#c9d1d9] placeholder-[#484f58] focus:outline-none focus:border-[#007acc]"
+                    disabled={githubImporting}
+                  />
+                  <button
+                    onClick={handleGitHubImport}
+                    disabled={githubImporting || !githubUrl.trim()}
+                    className="px-4 py-2 bg-[#238636] hover:bg-[#2ea043] disabled:opacity-50 text-white rounded-md text-sm font-medium transition-colors"
+                  >
+                    {githubImporting ? <Loader2 size={14} className="animate-spin" /> : 'Import'}
+                  </button>
+                </div>
+                {githubProgress && (
+                  <p className="mt-2 text-xs text-[#8b949e]">{githubProgress}</p>
+                )}
+                {githubError && (
+                  <p className="mt-2 text-xs text-[#f85149]">{githubError}</p>
+                )}
+              </div>
+            )}
 
             {/* Recent Projects */}
             <div>

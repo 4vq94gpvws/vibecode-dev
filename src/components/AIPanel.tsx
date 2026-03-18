@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { get as idbGet, set as idbSet } from 'idb-keyval'
 import { Send, X, Sparkles, AtSign, Paperclip, Cpu, Zap, Square, Loader2, Check, AlertCircle, Copy, CheckCheck } from 'lucide-react'
 import { useEditorStore, FileNode } from '../store/editorStore'
 import ReactMarkdown from 'react-markdown'
@@ -124,15 +125,27 @@ interface Props {
 }
 
 // ─── LocalStorage helpers for chat persistence ───
-function loadChatState() {
+async function loadChatState() {
   try {
-    const raw = localStorage.getItem('vibecode-chat')
-    if (raw) {
-      const data = JSON.parse(raw)
+    // Try IndexedDB first
+    const data = await idbGet('vibecode-chat') as { messages?: ChatMsg[]; model?: Model; conversationId?: string | null } | undefined
+    if (data) {
       return {
         messages: (data.messages || []) as ChatMsg[],
         model: (data.model || 'sonnet') as Model,
         conversationId: data.conversationId || null,
+      }
+    }
+    // Migrate from localStorage if exists
+    const raw = localStorage.getItem('vibecode-chat')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      await idbSet('vibecode-chat', parsed)
+      localStorage.removeItem('vibecode-chat')
+      return {
+        messages: (parsed.messages || []) as ChatMsg[],
+        model: (parsed.model || 'sonnet') as Model,
+        conversationId: parsed.conversationId || null,
       }
     }
   } catch {}
@@ -140,21 +153,30 @@ function loadChatState() {
 }
 
 function saveChatState(messages: ChatMsg[], model: Model, conversationId: string | null) {
-  try {
-    localStorage.setItem('vibecode-chat', JSON.stringify({ messages: messages.slice(-100), model, conversationId }))
-  } catch {}
+  idbSet('vibecode-chat', { messages: messages.slice(-100), model, conversationId }).catch(() => {})
 }
 
 export function AIPanel({ onClose }: Props) {
-  const initial = useRef(loadChatState())
-  const [messages, setMessages] = useState<ChatMsg[]>(initial.current.messages)
+  const [messages, setMessages] = useState<ChatMsg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [model, setModel] = useState<Model>(initial.current.model)
+  const [model, setModel] = useState<Model>('sonnet')
   const [tools, setTools] = useState<ToolStatus[]>([])
   const [showFilePicker, setShowFilePicker] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [conversationId, setConversationId] = useState<string | null>(initial.current.conversationId)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const chatLoaded = useRef(false)
+
+  // Load chat state from IndexedDB on mount
+  useEffect(() => {
+    if (chatLoaded.current) return
+    chatLoaded.current = true
+    loadChatState().then((state) => {
+      setMessages(state.messages)
+      setModel(state.model)
+      setConversationId(state.conversationId)
+    })
+  }, [])
 
   // Persist chat state on changes
   useEffect(() => {

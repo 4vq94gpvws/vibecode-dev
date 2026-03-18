@@ -46,7 +46,7 @@ function App() {
       setLoadingProjects(true)
       listProjects()
         .then(setProjects)
-        .catch(() => {})
+        .catch((e) => console.error('Initial list projects failed:', e))
         .finally(() => setLoadingProjects(false))
     }
   }, [user])
@@ -58,7 +58,7 @@ function App() {
     try {
       await saveProject(projectName, files, projectId)
       setLastSaved(new Date())
-    } catch {}
+    } catch (e) { console.error('Auto-save failed:', e) }
     setSaving(false)
   }, [projectId, projectName, files, user])
 
@@ -139,7 +139,7 @@ function App() {
         const project = await saveProject(name, [root])
         setProjectId(project.id)
         setProjects(prev => [project, ...prev])
-      } catch {}
+      } catch (e) { console.error('Save project failed:', e) }
     }
 
     setHasProject(true)
@@ -153,7 +153,7 @@ function App() {
         const project = await saveProject('demo-project', useEditorStore.getState().files)
         setProjectId(project.id)
         setProjects(prev => [project, ...prev])
-      } catch {}
+      } catch (e) { console.error('Save demo project failed:', e) }
     }
     setHasProject(true)
   }
@@ -166,7 +166,7 @@ function App() {
       setProjectName(full.name)
       setProjectId(full.id)
       setHasProject(true)
-    } catch {}
+    } catch (e) { console.error('Load project failed:', e) }
     setIsLoading(false)
   }
 
@@ -175,7 +175,7 @@ function App() {
     try {
       await deleteProject(id)
       setProjects(prev => prev.filter(p => p.id !== id))
-    } catch {}
+    } catch (e) { console.error('Delete project failed:', e) }
   }
 
   const handleBackToProjects = async () => {
@@ -183,7 +183,7 @@ function App() {
     setHasProject(false)
     setProjectId(null)
     // Refresh project list
-    listProjects().then(setProjects).catch(() => {})
+    listProjects().then(setProjects).catch((e) => console.error('List projects failed:', e))
   }
 
   const fileInput = (
